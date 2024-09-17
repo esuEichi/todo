@@ -1,138 +1,568 @@
-import type { MetaFunction } from "@remix-run/node";
+import { useState, useMemo, useCallback, useRef, useEffect, JSXElementConstructor, Key, ReactElement, ReactNode, ReactPortal} from 'react'
+import { json } from '@remix-run/node'
+import { useLoaderData } from '@remix-run/react'
+import { Button } from "~/components/ui/button"
+import { Input } from "~/components/ui/input"
+import { Checkbox } from "~/components/ui/checkbox"
+import { Textarea } from "~/components/ui/textarea"
+import { Calendar } from "~/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
+import { Switch } from "~/components/ui/switch"
+import { format, differenceInSeconds, parseISO } from "date-fns"
+import { CalendarIcon, Star, Plus, MoreVertical, X, GripVertical, Search, PinIcon } from "lucide-react"
 
-export const meta: MetaFunction = () => {
-  return [
-    { title: "New Remix App" },
-    { name: "description", content: "Welcome to Remix!" },
-  ];
-};
+import type { LoaderFunction } from '@remix-run/node';
+import type { Task, TimeEntry } from '~/types/task';
+import type { LoaderData } from '~/types/loader';
 
-export default function Index() {
-  return (
-    <div className="flex h-screen items-center justify-center">
-      <div className="flex flex-col items-center gap-16">
-        <header className="flex flex-col items-center gap-9">
-          <h1 className="leading text-2xl font-bold text-gray-800 dark:text-gray-100">
-            Welcome to <span className="sr-only">Remix</span>
-          </h1>
-          <div className="h-[144px] w-[434px]">
-            <img
-              src="/logo-light.png"
-              alt="Remix"
-              className="block w-full dark:hidden"
-            />
-            <img
-              src="/logo-dark.png"
-              alt="Remix"
-              className="hidden w-full dark:block"
-            />
-          </div>
-        </header>
-        <nav className="flex flex-col items-center justify-center gap-4 rounded-3xl border border-gray-200 p-6 dark:border-gray-700">
-          <p className="leading-6 text-gray-700 dark:text-gray-200">
-            What&apos;s next?
-          </p>
-          <ul>
-            {resources.map(({ href, text, icon }) => (
-              <li key={href}>
-                <a
-                  className="group flex items-center gap-3 self-stretch p-3 leading-normal text-blue-700 hover:underline dark:text-blue-500"
-                  href={href}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  {icon}
-                  {text}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      </div>
-    </div>
-  );
+// ローダー関数を定義
+export const loader = async () => {
+  // ここでデータベースからタスク取得する処理を実装します
+  // 今回はダミーデータを返します
+  const tasks: Task[] = [
+    { id: '1', title: "買い物に行く", completed: false, important: false, tags: ["日用品", "食料"], epic: "生活", details: "", startDate: null, endDate: null, pinned: false, timeEntries: [], isRunning: false },
+    { id: '2', title: "レポートを書く", completed: false, important: true, tags: ["仕事"], epic: "仕事", details: "", startDate: null, endDate: null, pinned: false, timeEntries: [], isRunning: false },
+    { id: '3', title: "運動する", completed: true, important: false, tags: ["健康"], epic: "健康", details: "", startDate: null, endDate: null, pinned: false, timeEntries: [], isRunning: false },
+  ]
+  return json({ tasks })
 }
 
-const resources = [
-  {
-    href: "https://remix.run/start/quickstart",
-    text: "Quick Start (5 min)",
-    icon: (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="24"
-        height="20"
-        viewBox="0 0 20 20"
-        fill="none"
-        className="stroke-gray-600 group-hover:stroke-current dark:stroke-gray-300"
-      >
-        <path
-          d="M8.51851 12.0741L7.92592 18L15.6296 9.7037L11.4815 7.33333L12.0741 2L4.37036 10.2963L8.51851 12.0741Z"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    ),
-  },
-  {
-    href: "https://remix.run/start/tutorial",
-    text: "Tutorial (30 min)",
-    icon: (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="24"
-        height="20"
-        viewBox="0 0 20 20"
-        fill="none"
-        className="stroke-gray-600 group-hover:stroke-current dark:stroke-gray-300"
-      >
-        <path
-          d="M4.561 12.749L3.15503 14.1549M3.00811 8.99944H1.01978M3.15503 3.84489L4.561 5.2508M8.3107 1.70923L8.3107 3.69749M13.4655 3.84489L12.0595 5.2508M18.1868 17.0974L16.635 18.6491C16.4636 18.8205 16.1858 18.8205 16.0144 18.6491L13.568 16.2028C13.383 16.0178 13.0784 16.0347 12.915 16.239L11.2697 18.2956C11.047 18.5739 10.6029 18.4847 10.505 18.142L7.85215 8.85711C7.75756 8.52603 8.06365 8.21994 8.39472 8.31453L17.6796 10.9673C18.0223 11.0653 18.1115 11.5094 17.8332 11.7321L15.7766 13.3773C15.5723 13.5408 15.5554 13.8454 15.7404 14.0304L18.1868 16.4767C18.3582 16.6481 18.3582 16.926 18.1868 17.0974Z"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    ),
-  },
-  {
-    href: "https://remix.run/docs",
-    text: "Remix Docs",
-    icon: (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="24"
-        height="20"
-        viewBox="0 0 20 20"
-        fill="none"
-        className="stroke-gray-600 group-hover:stroke-current dark:stroke-gray-300"
-      >
-        <path
-          d="M9.99981 10.0751V9.99992M17.4688 17.4688C15.889 19.0485 11.2645 16.9853 7.13958 12.8604C3.01467 8.73546 0.951405 4.11091 2.53116 2.53116C4.11091 0.951405 8.73546 3.01467 12.8604 7.13958C16.9853 11.2645 19.0485 15.889 17.4688 17.4688ZM2.53132 17.4688C0.951566 15.8891 3.01483 11.2645 7.13974 7.13963C11.2647 3.01471 15.8892 0.951453 17.469 2.53121C19.0487 4.11096 16.9854 8.73551 12.8605 12.8604C8.73562 16.9853 4.11107 19.0486 2.53132 17.4688Z"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        />
-      </svg>
-    ),
-  },
-  {
-    href: "https://rmx.as/discord",
-    text: "Join Discord",
-    icon: (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="24"
-        height="20"
-        viewBox="0 0 24 20"
-        fill="none"
-        className="stroke-gray-600 group-hover:stroke-current dark:stroke-gray-300"
-      >
-        <path
-          d="M15.0686 1.25995L14.5477 1.17423L14.2913 1.63578C14.1754 1.84439 14.0545 2.08275 13.9422 2.31963C12.6461 2.16488 11.3406 2.16505 10.0445 2.32014C9.92822 2.08178 9.80478 1.84975 9.67412 1.62413L9.41449 1.17584L8.90333 1.25995C7.33547 1.51794 5.80717 1.99419 4.37748 2.66939L4.19 2.75793L4.07461 2.93019C1.23864 7.16437 0.46302 11.3053 0.838165 15.3924L0.868838 15.7266L1.13844 15.9264C2.81818 17.1714 4.68053 18.1233 6.68582 18.719L7.18892 18.8684L7.50166 18.4469C7.96179 17.8268 8.36504 17.1824 8.709 16.4944L8.71099 16.4904C10.8645 17.0471 13.128 17.0485 15.2821 16.4947C15.6261 17.1826 16.0293 17.8269 16.4892 18.4469L16.805 18.8725L17.3116 18.717C19.3056 18.105 21.1876 17.1751 22.8559 15.9238L23.1224 15.724L23.1528 15.3923C23.5873 10.6524 22.3579 6.53306 19.8947 2.90714L19.7759 2.73227L19.5833 2.64518C18.1437 1.99439 16.6386 1.51826 15.0686 1.25995ZM16.6074 10.7755L16.6074 10.7756C16.5934 11.6409 16.0212 12.1444 15.4783 12.1444C14.9297 12.1444 14.3493 11.6173 14.3493 10.7877C14.3493 9.94885 14.9378 9.41192 15.4783 9.41192C16.0471 9.41192 16.6209 9.93851 16.6074 10.7755ZM8.49373 12.1444C7.94513 12.1444 7.36471 11.6173 7.36471 10.7877C7.36471 9.94885 7.95323 9.41192 8.49373 9.41192C9.06038 9.41192 9.63892 9.93712 9.6417 10.7815C9.62517 11.6239 9.05462 12.1444 8.49373 12.1444Z"
-          strokeWidth="1.5"
-        />
-      </svg>
-    ),
-  },
-];
+export default function Index() {
+  const { tasks: initialTasks } = useLoaderData<typeof loader>()
+  const [tasks, setTasks] = useState(initialTasks)
+  const [newTask, setNewTask] = useState("")
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [selectedEpic, setSelectedEpic] = useState<string | null>(null)
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  const [tagSearch, setTagSearch] = useState("")
+  const [taskListFilter, setTaskListFilter] = useState("all")
+  const [newTag, setNewTag] = useState("")
+  const scrollContainerRef = useRef(null)
+
+  const addTask = () => {
+    if (newTask.trim() !== "") {
+      const newTaskObject = {
+        id: Date.now().toString(),
+        title: newTask,
+        completed: false,
+        important: false,
+        tags: selectedTags ? selectedTags : [],
+        epic: selectedEpic || "",
+        details: "",
+        startDate: null,
+        endDate: null,
+        pinned: false,
+        timeEntries: [],
+        isRunning: false
+      } 
+      setTasks(prevTasks => [newTaskObject, ...prevTasks])
+      setNewTask("")
+    }
+  }
+
+  const toggleComplete = useCallback((id: string) => {
+    setTasks(prevTasks => {
+      const updatedTasks = prevTasks.map(task => 
+        task.id === id ? { ...task, completed: !task.completed } : task
+      )
+      return sortTasks(updatedTasks)
+    })
+  }, [])
+
+  const sortTasks = useCallback((tasksToSort: any[]) => {
+    return tasksToSort.sort((a: { completed: any }, b: { completed: any }) => {
+      if (a.completed && !b.completed) return 1
+      if (!a.completed && b.completed) return -1
+      return 0
+    })
+  }, [])
+
+  const toggleImportant = (id: string) => {
+    setTasks(tasks.map(task => 
+      task.id === id ? { ...task, important: !task.important } : task
+    ))
+  }
+
+  const updateTaskTitle = (id: string, newTitle: string) => {
+    setTasks(tasks.map(task =>
+      task.id === id ? { ...task, title: newTitle } : task
+    ))
+    setEditingTaskId(null)
+  }
+
+  const addTag = (taskId: string, newTag: string) => {
+    setTasks(tasks.map(task =>
+      task.id === taskId ? { ...task, tags: [...task.tags, newTag] } : task
+    ))
+  }
+
+  const removeTag = (taskId: string, tagToRemove: string) => {
+    setTasks(tasks.map(task =>
+      task.id === taskId ? { ...task, tags: task.tags.filter(tag => tag !== tagToRemove) } : task
+    ))
+  }
+  const toggleTagSelection = (tag: string) => {
+    setSelectedTags((prevSelectedTags) => {
+      if (prevSelectedTags.includes(tag)) {
+        return prevSelectedTags.filter((t) => t !== tag);
+      } else {
+        return [...prevSelectedTags, tag];
+      }
+    });
+  }
+
+  const allTags = useMemo(() => {
+    const tagSet = new Set(tasks.flatMap(task => task.tags))
+    return Array.from(tagSet)
+  }, [tasks])
+
+  const allEpics = useMemo(() => {
+    const epicSet = new Set(tasks.map(task => task.epic).filter(Boolean))
+    return Array.from(epicSet)
+  }, [tasks])
+
+  const filteredTasks = useMemo(() => {
+    return tasks.filter(task =>
+      (selectedTags === null || selectedTags.length === 0 || selectedTags.every((tag: string) => task.tags.includes(tag))) &&
+      (!selectedEpic || task.epic === selectedEpic) &&
+      (taskListFilter === "all" ||
+       (taskListFilter === "important" && task.important) ||
+       (taskListFilter === "completed" && task.completed))
+    )
+  }, [tasks, selectedTags, selectedEpic, taskListFilter])
+
+  const filteredTags = useMemo(() => {
+    return allTags.filter(tag => tag.toLowerCase().includes(tagSearch.toLowerCase()))
+  }, [allTags, tagSearch])
+
+  const updateTaskDetails = (id: string, newDetails: string) => {
+    setTasks(tasks.map(task =>
+      task.id === id ? { ...task, details: newDetails } : task
+    ))
+  }
+
+  const updateTaskDate = (id: string, field: string, date: Date | undefined) => {
+    setTasks(tasks.map(task =>
+      task.id === id ? { ...task, [field]: date } : task
+    ))
+  }
+
+  const getTaskListTitle = () => {
+    if (selectedEpic) {
+      return `${selectedEpic}のタスク`
+    } else if (selectedTags.length > 0) {
+      return selectedTags.length === 1
+        ? `${selectedTags[0]}のタスク`
+        : `${selectedTags.join('・')}のタスク`
+    } else {
+      switch (taskListFilter) {
+        case "important":
+          return "重要なタスク"
+        case "completed":
+          return "完了済みのタスク"
+        default:
+          return "すべてのタスク"
+      }
+    }
+  }
+
+  const togglePin = (id: string) => {
+    setTasks(tasks.map(task =>
+      task.id === id ? { ...task, pinned: !task.pinned } : task
+    ))
+  }
+
+  const toggleTaskRunning = (id: string) => {
+    setTasks(tasks.map(task => {
+      if (task.id === id) {
+        if (task.isRunning) {
+          // タスクを停止する
+          const now = new Date()
+          const lastEntry = task.timeEntries[task.timeEntries.length - 1]
+          lastEntry.end = now.toISOString()
+          return { ...task, isRunning: false, timeEntries: [...task.timeEntries] }
+        } else {
+          // タスクを開始する
+          const now = new Date()
+          return { ...task, isRunning: true, timeEntries: [...task.timeEntries, { start: now.toISOString(), end: null }] }
+        }
+      }
+      return task
+    }))
+  }
+
+  const updateTimeEntry = (taskId: string, entryIndex: number, field: keyof TimeEntry, value: string) => {
+    setTasks(tasks.map(task => {
+      if (task.id === taskId) {
+        const newTimeEntries = [...task.timeEntries] as TimeEntry[];
+        newTimeEntries[entryIndex][field] = value;
+        return { ...task, timeEntries: newTimeEntries };
+      }
+      return task;
+    }));
+  }
+
+  const calculateTotalTime = (timeEntries: any[]) => {
+    return timeEntries.reduce((total: number, entry: { start: string; end: string }) => {
+      if (entry.start && entry.end) {
+        return total + differenceInSeconds(parseISO(entry.end), parseISO(entry.start))
+      }
+      return total
+    }, 0)
+  }
+
+  const formatTime = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600)
+    const minutes = Math.floor((seconds % 3600) / 60)
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+  }
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTasks(prevTasks => prevTasks.map(task => {
+        if (task.isRunning) {
+          const lastEntry = task.timeEntries[task.timeEntries.length - 1]
+          const now = new Date()
+          lastEntry.end = now.toISOString()
+          return { ...task, timeEntries: [...task.timeEntries] }
+        }
+        return task
+      }))
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [])
+
+  return (
+    <div className="flex h-screen bg-gray-100">
+      {/* サイドバー */}
+      <div className="w-64 bg-white p-4 shadow overflow-y-auto">
+        <h2 className="text-xl font-bold mb-4">タスクリスト</h2>
+        <ul className="mb-4">
+          {/* これらのリスト項目にkeyを追加 */}
+          <li key="all" className="mb-2">
+            <Button
+              variant={taskListFilter === "all" ? "secondary" : "ghost"}
+              onClick={() => setTaskListFilter("all")}
+              className="w-full justify-start"
+            >
+              すべてのタスク
+            </Button>
+          </li>
+          <li key="important" className="mb-2">
+            <Button
+              variant={taskListFilter === "important" ? "secondary" : "ghost"}
+              onClick={() => setTaskListFilter("important")}
+              className="w-full justify-start text-yellow-500"
+            >
+              重要
+            </Button>
+          </li>
+          <li key="completed" className="mb-2">
+            <Button
+              variant={taskListFilter === "completed" ? "secondary" : "ghost"}
+              onClick={() => setTaskListFilter("completed")}
+              className="w-full justify-start"
+            >
+              完了済み
+            </Button>
+          </li>
+        </ul>
+        <h3 className="font-bold mb-2">エピックで絞り込む</h3>
+        <ul className="mb-4">
+          {allEpics.map(epic => (
+            <li key={epic} className="mb-2">
+              <Button
+                variant={selectedEpic === epic ? "secondary" : "ghost"}
+                onClick={() => setSelectedEpic(selectedEpic === epic ? null : epic)}
+                className="w-full justify-start"
+              >
+                {epic}
+              </Button>
+            </li>
+          ))}
+        </ul>
+        <h3 className="font-bold mb-2">タグで絞り込む</h3>
+        <div className="mb-2">
+          <Input
+            type="text"
+            placeholder="タグを検索"
+            value={tagSearch}
+            onChange={(e) => setTagSearch(e.target.value)}
+            className="w-full"
+          />
+        </div>
+        <ul>
+          {filteredTags.map(tag => (
+            <li key={tag} className="mb-2">
+              <Button
+                variant={selectedTags.includes(tag) ? "secondary" : "ghost"}
+                onClick={() => toggleTagSelection(tag)}
+                className="w-full justify-start"
+              >
+                {tag}
+              </Button>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* メインコンテンツ */}
+      <div className="flex-1 p-8 overflow-auto">
+        <h1 className="text-2xl font-bold mb-4">{getTaskListTitle()}</h1>
+        
+        {/* 新しいタスクの入力フィールド */}
+        <div className="flex mb-4">
+          <Input
+            type="text"
+            placeholder="新しいタスクを追加"
+            value={newTask}
+            onChange={(e) => setNewTask(e.target.value)}
+            className="flex-1 mr-2"
+          />
+          <Button onClick={addTask}>
+            <Plus className="h-4 w-4 mr-2" />
+            追加
+          </Button>
+        </div>
+        <ul>
+          {filteredTasks.map((task) => (
+            <li key={task.id} className="mb-4 bg-white p-3 rounded shadow">
+              <div className="flex items-center mb-2">
+                <div className="mr-2 cursor-move">
+                  <GripVertical className="h-4 w-4 text-gray-400" />
+                </div>
+                <Checkbox
+                  checked={task.completed}
+                  onCheckedChange={() => toggleComplete(task.id)}
+                />
+                {editingTaskId === task.id ? (
+                  <Input
+                    type="text"
+                    value={task.title}
+                    onChange={(e) => updateTaskTitle(task.id, e.target.value)}
+                    onBlur={() => setEditingTaskId(null)}
+                    autoFocus
+                    className="ml-2 flex-1"
+                  />
+                ) : (
+                  <span
+                    className={`ml-2 flex-1 cursor-pointer ${task.completed ? 'line-through text-gray-500' : ''}`}
+                    onClick={() => {
+                      setEditingTaskId(task.id);
+                      setSelectedTask(task as Task);
+                    }}
+                  >
+                    {task.title}
+                  </span>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => toggleImportant(task.id)}
+                  className={task.important ? 'text-yellow-500' : ''}
+                >
+                  <Star className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => togglePin(task.id)}
+                  className={task.pinned ? 'text-blue-500' : ''}
+                >
+                  <PinIcon className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </div>
+              {/* タグ表示エリア */}
+              <div className="flex flex-wrap gap-2 mt-2">
+                {task.tags.map((tag) => (
+                  <span key={`${task.id}-${tag}`} className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-sm flex items-center">
+                    {tag}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeTag(task.id, tag)}
+                      className="ml-1 h-4 w-4 p-0"
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </span>
+                ))}
+              </div>
+              {/* タグ追加フォーム */}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  const form = e.currentTarget as HTMLFormElement;
+                  const newTagInput = form.elements.namedItem('newTag') as HTMLInputElement;
+                  const newTag = newTagInput.value.trim()
+                  if (newTag && !task.tags.includes(newTag)) {
+                    addTag(task.id, newTag)
+                    form.reset()
+                  }
+                }}
+                className="mt-2"
+              >
+                <Input
+                  type="text"
+                  name="newTag"
+                  placeholder="新しいタグを追加"
+                  className="text-sm"
+                />
+              </form>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* 右ペイン（タスク詳細） */}
+      {selectedTask && (
+        <div className="w-1/3 bg-white p-4 shadow overflow-y-auto">
+          <h2 className="text-xl font-bold mb-4">タスク詳細</h2>
+          <div className="mb-4">
+            <label htmlFor="task-title" className="block text-sm font-medium text-gray-700">タイトル</label>
+            <Input
+              id="task-title"
+              type="text"
+              value={selectedTask.title}
+              onChange={(e) => updateTaskTitle(selectedTask.id, e.target.value)}
+              className="mt-1"
+            />
+          </div>
+          <div className="mb-4">
+            <label htmlFor="task-epic" className="block text-sm font-medium text-gray-700">エピック</label>
+            <Input
+              id="task-epic"
+              type="text"
+              value={selectedTask.epic}
+              onChange={(e) => setTasks(tasks.map(task =>
+                task.id === selectedTask.id ? { ...task, epic: e.target.value } : task
+              ))}
+              className="mt-1"
+            />
+          </div>
+          <div className="mb-4 flex space-x-4">
+            <div className="flex-1">
+              <label htmlFor="task-start-date" className="block text-sm font-medium text-gray-700">開始日</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="task-start-date"
+                    variant={"outline"}
+                    className={`w-full justify-start text-left font-normal ${!selectedTask.startDate && "text-muted-foreground"}`}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {selectedTask.startDate ? format(selectedTask.startDate, "PPP") : <span>開始日を選択</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={selectedTask.startDate || undefined}
+                    onSelect={(date) => updateTaskDate(selectedTask.id, 'startDate', date)}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="flex-1">
+              <label htmlFor="task-end-date" className="block text-sm font-medium text-gray-700">終了日</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="task-end-date"
+                    variant={"outline"}
+                    className={`w-full justify-start text-left font-normal ${!selectedTask.endDate && "text-muted-foreground"}`}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {selectedTask.endDate ? format(selectedTask.endDate, "PPP") : <span>終了日を選択</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={selectedTask.endDate || undefined}
+                    onSelect={(date) => updateTaskDate(selectedTask.id, 'endDate', date)}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700">タグ</label>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {selectedTask.tags.map((tag: string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | null | undefined, index: Key | null | undefined) => (
+                <span key={index} className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-sm flex items-center">
+                  {tag}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeTag(selectedTask.id, tag as string)}
+                    className="ml-1 h-4 w-4 p-0"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </span>
+              ))}
+            </div>
+            <div className="flex mt-2">
+              <Input
+                type="text"
+                value={newTag}
+                onChange={(e) => setNewTag(e.target.value)}
+                placeholder="新しいタグを追加"
+                className="flex-1 mr-2"
+              />
+              <Button onClick={() => {
+                if (newTag && !selectedTask.tags.includes(newTag)) {
+                  addTag(selectedTask.id, newTag)
+                  setNewTag("")
+                }
+              }}>
+                追加
+              </Button>
+            </div>
+          </div>
+          <div className="mb-4">
+            <label htmlFor="task-details" className="block text-sm font-medium text-gray-700">詳細</label>
+            <Textarea
+              id="task-details"
+              value={selectedTask.details}
+              onChange={(e) => updateTaskDetails(selectedTask.id, e.target.value)}
+              className="mt-1"
+              rows={5}
+              placeholder="タスクの詳細を入力してください"
+            />
+          </div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700">実施時間</label>
+            <p className="mt-1">{formatTime(calculateTotalTime(selectedTask.timeEntries))}</p>
+          </div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700">時間エントリー</label>
+            {selectedTask.timeEntries.map((entry: TimeEntry, index: Key | null | undefined) => (
+              <div key={index} className="flex items-center mt-2">
+                <Input
+                  type="datetime-local"
+                  value={entry.start ? format(parseISO(entry.start), "yyyy-MM-dd'T'HH:mm") : ''}
+                  onChange={(e) => updateTimeEntry(selectedTask.id, index as number, 'start', e.target.value)}
+                  className="mr-2"
+                />
+                <Input
+                  type="datetime-local"
+                  value={entry.end ? format(parseISO(entry.end), "yyyy-MM-dd'T'HH:mm") : ''}
+                  onChange={(e) => updateTimeEntry(selectedTask.id, index as number, 'end', e.target.value)}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
