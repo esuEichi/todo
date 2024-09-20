@@ -3,7 +3,7 @@ import { json } from '@remix-run/node'
 import { useLoaderData } from '@remix-run/react'
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
-import { Plus } from "lucide-react"
+import { Plus, X } from "lucide-react"
 import Sidebar from '~/components/Sidebar'
 import TaskList from '~/components/TaskList'
 import TaskDetails from '~/components/TaskDetails'
@@ -301,6 +301,10 @@ export default function Index() {
     }
   }, [tasks])
 
+  const deleteTask = (id: string) => {
+    setTasks(prevTasks => prevTasks.filter(task => task.id !== id))
+  }
+
   return (
     <div className="flex flex-col h-screen bg-gray-100">
       <div className="flex flex-1 overflow-hidden">
@@ -349,6 +353,7 @@ export default function Index() {
               removeTag={removeTag}
               addTag={addTag}
               setSelectedTask={setSelectedTask}
+              deleteTask={deleteTask}
             />
           </DragDropContext>
         </div>

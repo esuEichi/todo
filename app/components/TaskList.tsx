@@ -2,7 +2,7 @@ import React from 'react'
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Checkbox } from "~/components/ui/checkbox"
-import { Star, PinIcon, MoreVertical, X, GripVertical } from "lucide-react"
+import { Star, Pin, X, GripVertical, MoreVertical } from "lucide-react" // Pin を使用
 import { Draggable, Droppable } from 'react-beautiful-dnd'
 import type { Task } from '~/types/task'
 
@@ -17,6 +17,7 @@ interface TaskListProps {
   removeTag: (taskId: string, tag: string) => void;
   addTag: (taskId: string, tag: string) => void;
   setSelectedTask: (task: Task) => void;
+  deleteTask: (id: string) => void; // 削除機能を追加
 }
 
 const TaskList: React.FC<TaskListProps> = ({
@@ -29,7 +30,8 @@ const TaskList: React.FC<TaskListProps> = ({
   togglePin,
   removeTag,
   addTag,
-  setSelectedTask
+  setSelectedTask,
+  deleteTask // 削除機能を追加
 }) => {
   return (
     <Droppable droppableId="tasks">
@@ -85,10 +87,18 @@ const TaskList: React.FC<TaskListProps> = ({
                       onClick={() => togglePin(task.id)}
                       className={`${task.pinned ? 'text-blue-500' : ''} hover:bg-transparent`}
                     >
-                      <PinIcon className="h-4 w-4" />
+                      <Pin className="h-4 w-4" /> {/* PinIcon を Pin に変更 */}
                     </Button>
                     <Button variant="ghost" size="icon">
                       <MoreVertical className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => deleteTask(task.id)} // 削除機能を呼び出す
+                      className="ml-2"
+                    >
+                      <X className="h-4 w-4" />
                     </Button>
                   </div>
                   <div className="flex flex-wrap gap-2 mt-2">
