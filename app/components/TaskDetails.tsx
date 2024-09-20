@@ -1,10 +1,11 @@
-import React from 'react'
+import React, { useState, useCallback, KeyboardEvent } from 'react'
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Textarea } from "~/components/ui/textarea"
 import { Calendar } from "~/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
-import { format, parseISO } from "date-fns"
+import { format, parse } from "date-fns"
+import { ja } from "date-fns/locale"
 import { CalendarIcon, X } from "lucide-react"
 import type { Task, TimeEntry } from '~/types/task'
 
@@ -31,18 +32,58 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
   calculateTotalTime,
   formatTime
 }) => {
-  const [newTag, setNewTag] = React.useState("")
+  const [newTag, setNewTag] = useState("")
+  const [localTitle, setLocalTitle] = useState(selectedTask.title)
+  const [localDetails, setLocalDetails] = useState(selectedTask.details)
+
+  const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setLocalTitle(e.target.value)
+  }, [])
+
+  const handleTitleUpdate = useCallback(() => {
+    updateTaskTitle(selectedTask.id, localTitle)
+  }, [selectedTask.id, localTitle, updateTaskTitle])
+
+  const handleTitleKeyDown = useCallback((e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleTitleUpdate()
+    }
+  }, [handleTitleUpdate])
+
+  const handleDetailsChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setLocalDetails(e.target.value)
+  }, [])
+
+  const handleDetailsUpdate = useCallback(() => {
+    updateTaskDetails(selectedTask.id, localDetails)
+  }, [selectedTask.id, localDetails, updateTaskDetails])
+
+  const handleDetailsKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleDetailsUpdate()
+    }
+  }, [handleDetailsUpdate])
+
+  const formatDate = (date: Date | null) => {
+    return date ? format(date, "yyyy年MM月dd日", { locale: ja }) : ''
+  }
+
+  const parseDate = (dateString: string) => {
+    return parse(dateString, "yyyy年MM月dd日", new Date(), { locale: ja })
+  }
 
   return (
     <div className="w-1/3 bg-white p-4 shadow overflow-y-auto">
-      <h2 className="text-xl font-bold mb-4">タスク詳細</h2>
       <div className="mb-4">
         <label htmlFor="task-title" className="block text-sm font-medium text-gray-700">タイトル</label>
         <Input
           id="task-title"
           type="text"
-          value={selectedTask.title}
-          onChange={(e) => updateTaskTitle(selectedTask.id, e.target.value)}
+          value={localTitle}
+          onChange={handleTitleChange}
+          onBlur={handleTitleUpdate}
+          onKeyDown={handleTitleKeyDown}
           className="mt-1"
         />
       </div>
@@ -51,8 +92,8 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
         <Input
           id="task-epic"
           type="text"
-          value={selectedTask.epic}
-          onChange={(e) => updateTaskTitle(selectedTask.id, e.target.value)}
+          value={selectedTask.epic?.title || ''}
+          readOnly
           className="mt-1"
         />
       </div>
@@ -67,15 +108,16 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
                 className={`w-full justify-start text-left font-normal ${!selectedTask.startDate && "text-muted-foreground"}`}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {selectedTask.startDate ? format(selectedTask.startDate, "PPP") : <span>開始日を選択</span>}
+                {formatDate(selectedTask.startDate) || <span>開始日を選択</span>}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
               <Calendar
                 mode="single"
-                selected={selectedTask.startDate || undefined}
+                selected={selectedTask.startDate}
                 onSelect={(date) => updateTaskDate(selectedTask.id, 'startDate', date)}
                 initialFocus
+                locale={ja}
               />
             </PopoverContent>
           </Popover>
@@ -90,15 +132,16 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
                 className={`w-full justify-start text-left font-normal ${!selectedTask.endDate && "text-muted-foreground"}`}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {selectedTask.endDate ? format(selectedTask.endDate, "PPP") : <span>終了日を選択</span>}
+                {formatDate(selectedTask.endDate) || <span>終了日を選択</span>}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
               <Calendar
                 mode="single"
-                selected={selectedTask.endDate || undefined}
+                selected={selectedTask.endDate}
                 onSelect={(date) => updateTaskDate(selectedTask.id, 'endDate', date)}
                 initialFocus
+                locale={ja}
               />
             </PopoverContent>
           </Popover>
@@ -143,8 +186,10 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
         <label htmlFor="task-details" className="block text-sm font-medium text-gray-700">詳細</label>
         <Textarea
           id="task-details"
-          value={selectedTask.details}
-          onChange={(e) => updateTaskDetails(selectedTask.id, e.target.value)}
+          value={localDetails}
+          onChange={handleDetailsChange}
+          onBlur={handleDetailsUpdate}
+          onKeyDown={handleDetailsKeyDown}
           className="mt-1"
           rows={5}
           placeholder="タスクの詳細を入力してください"
@@ -160,13 +205,13 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
           <div key={index} className="flex items-center mt-2">
             <Input
               type="datetime-local"
-              value={entry.start ? format(parseISO(entry.start), "yyyy-MM-dd'T'HH:mm") : ''}
+              value={entry.start ? format(new Date(entry.start), "yyyy-MM-dd'T'HH:mm") : ''}
               onChange={(e) => updateTimeEntry(selectedTask.id, index, 'start', e.target.value)}
               className="mr-2"
             />
             <Input
               type="datetime-local"
-              value={entry.end ? format(parseISO(entry.end), "yyyy-MM-dd'T'HH:mm") : ''}
+              value={entry.end ? format(new Date(entry.end), "yyyy-MM-dd'T'HH:mm") : ''}
               onChange={(e) => updateTimeEntry(selectedTask.id, index, 'end', e.target.value)}
             />
           </div>

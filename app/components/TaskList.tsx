@@ -75,7 +75,7 @@ const TaskList: React.FC<TaskListProps> = ({
                       variant="ghost"
                       size="icon"
                       onClick={() => toggleImportant(task.id)}
-                      className={task.important ? 'text-yellow-500' : ''}
+                      className={`${task.important ? 'text-yellow-500' : ''} hover:bg-transparent`}
                     >
                       <Star className="h-4 w-4" />
                     </Button>
@@ -83,7 +83,7 @@ const TaskList: React.FC<TaskListProps> = ({
                       variant="ghost"
                       size="icon"
                       onClick={() => togglePin(task.id)}
-                      className={task.pinned ? 'text-blue-500' : ''}
+                      className={`${task.pinned ? 'text-blue-500' : ''} hover:bg-transparent`}
                     >
                       <PinIcon className="h-4 w-4" />
                     </Button>
