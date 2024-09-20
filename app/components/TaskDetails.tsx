@@ -102,7 +102,9 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
   }, [selectedTask.id, removeTag])
 
   const handleDateSelect = (field: 'startDate' | 'endDate') => (date: Date | undefined) => {
-    updateTaskDate(selectedTask.id, field, date || null)
+    if (date) {
+      updateTaskDate(selectedTask.id, field, date)
+    }
   }
 
   return (
@@ -140,13 +142,13 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
                 className={`w-full justify-start text-left font-normal ${!selectedTask.startDate && "text-muted-foreground"}`}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {formatDate(selectedTask.startDate) || <span>開始日を選択</span>}
+                {selectedTask.startDate ? format(new Date(selectedTask.startDate), "yyyy年MM月dd日", { locale: ja }) : <span>開始日を選択</span>}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
               <Calendar
                 mode="single"
-                selected={selectedTask.startDate || undefined}
+                selected={selectedTask.startDate ? new Date(selectedTask.startDate) : undefined}
                 onSelect={handleDateSelect('startDate')}
                 initialFocus
                 locale={ja}
@@ -164,13 +166,13 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
                 className={`w-full justify-start text-left font-normal ${!selectedTask.endDate && "text-muted-foreground"}`}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {formatDate(selectedTask.endDate) || <span>終了日を選択</span>}
+                {selectedTask.endDate ? format(new Date(selectedTask.endDate), "yyyy年MM月dd日", { locale: ja }) : <span>終了日を選択</span>}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
               <Calendar
                 mode="single"
-                selected={selectedTask.endDate || undefined}
+                selected={selectedTask.endDate ? new Date(selectedTask.endDate) : undefined}
                 onSelect={handleDateSelect('endDate')}
                 initialFocus
                 locale={ja}

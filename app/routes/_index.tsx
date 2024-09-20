@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
+import { useState, useMemo, useCallback, useRef, useEffect, KeyboardEvent, CompositionEvent } from 'react'
 import { json } from '@remix-run/node'
 import { useLoaderData } from '@remix-run/react'
 import { Button } from "~/components/ui/button"
@@ -34,9 +34,14 @@ export const loader: LoaderFunction = async () => {
 }
 
 export default function Index() {
-  const { tasks: initialTasks } = useLoaderData<typeof loader>()
-  const { epics: initialEpics } = useLoaderData<typeof loader>()
-  const [tasks, setTasks] = useState<Task[]>(initialTasks)
+  const { tasks: initialTasks, epics: initialEpics } = useLoaderData<typeof loader>()
+  const [tasks, setTasks] = useState<Task[]>(() => {
+    if (typeof window !== 'undefined') {
+      const storedTasks = localStorage.getItem('tasks')
+      return storedTasks ? JSON.parse(storedTasks) : initialTasks
+    }
+    return initialTasks
+  })
   const [newTask, setNewTask] = useState("")
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
   const [selectedTags, setSelectedTags] = useState<string[]>([])
@@ -48,6 +53,16 @@ export default function Index() {
   const [epics, setEpics] = useState<Epic[]>([])
   const [newEpicTitle, setNewEpicTitle] = useState("")
   const [allTags, setAllTags] = useState<Set<string>>(new Set())
+  const [isComposing, setIsComposing] = useState(false)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedTasks = localStorage.getItem('tasks')
+      if (storedTasks) {
+        setTasks(JSON.parse(storedTasks))
+      }
+    }
+  }, [])
 
   useEffect(() => {
     const tagSet = new Set(tasks.flatMap(task => task.tags))
@@ -71,8 +86,23 @@ export default function Index() {
         isRunning: false
       }
       setTasks(prevTasks => [newTaskObject, ...prevTasks])
-      setNewTask("")
+      setNewTask("") // フォームを空にする
     }
+  }
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !isComposing) {
+      e.preventDefault()
+      addTask()
+    }
+  }
+
+  const handleCompositionStart = () => {
+    setIsComposing(true)
+  }
+
+  const handleCompositionEnd = () => {
+    setIsComposing(false)
   }
 
   const toggleComplete = useCallback((id: string) => {
@@ -180,7 +210,7 @@ export default function Index() {
         case "important":
           return "重要なタスク"
         case "completed":
-          return "完了済みのタスク"
+          return "完済みのタスク"
         default:
           return "すべてのタスク"
       }
@@ -264,6 +294,13 @@ export default function Index() {
     }
   }
 
+  // タスクが変更されたときにローカルストレージに保存
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('tasks', JSON.stringify(tasks))
+    }
+  }, [tasks])
+
   return (
     <div className="flex flex-col h-screen bg-gray-100">
       <div className="flex flex-1 overflow-hidden">
@@ -290,6 +327,9 @@ export default function Index() {
               placeholder="新しいタスクを追加"
               value={newTask}
               onChange={(e) => setNewTask(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onCompositionStart={handleCompositionStart}
+              onCompositionEnd={handleCompositionEnd}
               className="flex-1 mr-2"
             />
             <Button onClick={addTask}>
