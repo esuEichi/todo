@@ -10,31 +10,43 @@ import TaskDetails from '~/components/TaskDetails'
 import PinnedTasks from '~/components/PinnedTasks'
 import { sortTasks, calculateTotalTime, formatTime } from '~/utils/taskUtils'
 import { DragDropContext, DropResult } from 'react-beautiful-dnd'
+import { Epic } from '~/types/task'
 
 import type { LoaderFunction } from '@remix-run/node'
 import type { Task } from '~/types/task'
 
 export const loader: LoaderFunction = async () => {
+  // epicのダミーデータを返す
+  const epics: Epic[] = [
+    { id: '1', title: "生活", description: "" },
+    { id: '2', title: "仕事", description: "" },
+    { id: '3', title: "健康", description: "" },
+  ]
+
   // ダミーデータを返す
   const tasks: Task[] = [
-    { id: '1', title: "買い物に行く", completed: false, important: false, tags: ["日用品", "食料"], epic: "生活", details: "", startDate: null, endDate: null, pinned: false, timeEntries: [], isRunning: false },
-    { id: '2', title: "レポートを書く", completed: false, important: true, tags: ["仕事"], epic: "仕事", details: "", startDate: null, endDate: null, pinned: false, timeEntries: [], isRunning: false },
-    { id: '3', title: "運動する", completed: true, important: false, tags: ["健康"], epic: "健康", details: "", startDate: null, endDate: null, pinned: false, timeEntries: [], isRunning: false },
+    { id: '1', title: "買い物に行く", completed: false, important: false, tags: ["日用品", "食料"], epic: epics[0], details: "", startDate: null, endDate: null, pinned: false, timeEntries: [], isRunning: false },
+    { id: '2', title: "レポートを書く", completed: false, important: true, tags: ["仕事"], epic: epics[1], details: "", startDate: null, endDate: null, pinned: false, timeEntries: [], isRunning: false },
+    { id: '3', title: "運動する", completed: true, important: false, tags: ["健康"], epic: epics[2], details: "", startDate: null, endDate: null, pinned: false, timeEntries: [], isRunning: false },
   ]
-  return json({ tasks })
+  
+  return json({ tasks, epics })
 }
 
 export default function Index() {
   const { tasks: initialTasks } = useLoaderData<typeof loader>()
+  const { epics: initialEpics } = useLoaderData<typeof loader>()
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
   const [newTask, setNewTask] = useState("")
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
   const [selectedTags, setSelectedTags] = useState<string[]>([])
-  const [selectedEpic, setSelectedEpic] = useState<string | null>(null)
+  const [selectedEpic, setSelectedEpic] = useState<Epic | null>(null)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [tagSearch, setTagSearch] = useState("")
   const [taskListFilter, setTaskListFilter] = useState("all")
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const [epics, setEpics] = useState<Epic[]>([])
+  const [newEpicTitle, setNewEpicTitle] = useState("")
 
   const addTask = () => {
     if (newTask.trim() !== "") {
@@ -44,7 +56,7 @@ export default function Index() {
         completed: false,
         important: false,
         tags: selectedTags,
-        epic: selectedEpic || "",
+        epic: selectedEpic || null,
         details: "",
         startDate: null,
         endDate: null,
@@ -73,20 +85,31 @@ export default function Index() {
   }
 
   const updateTaskTitle = (id: string, newTitle: string) => {
-    setTasks(tasks.map(task =>
+    setTasks(prevTasks => prevTasks.map(task =>
       task.id === id ? { ...task, title: newTitle } : task
     ))
-    setEditingTaskId(null)
+  }
+
+  const updateTaskDetails = (id: string, newDetails: string) => {
+    setTasks(prevTasks => prevTasks.map(task =>
+      task.id === id ? { ...task, details: newDetails } : task
+    ))
+  }
+
+  const updateTaskDate = (id: string, field: 'startDate' | 'endDate', date: Date | null) => {
+    setTasks(prevTasks => prevTasks.map(task =>
+      task.id === id ? { ...task, [field]: date ? date.toISOString() : null } : task
+    ))
   }
 
   const addTag = (taskId: string, newTag: string) => {
-    setTasks(tasks.map(task =>
+    setTasks(prevTasks => prevTasks.map(task =>
       task.id === taskId ? { ...task, tags: [...task.tags, newTag] } : task
     ))
   }
 
   const removeTag = (taskId: string, tagToRemove: string) => {
-    setTasks(tasks.map(task =>
+    setTasks(prevTasks => prevTasks.map(task =>
       task.id === taskId ? { ...task, tags: task.tags.filter(tag => tag !== tagToRemove) } : task
     ))
   }
@@ -106,7 +129,7 @@ export default function Index() {
     return Array.from(tagSet)
   }, [tasks])
 
-  const allEpics = useMemo(() => {
+  const assignedEpics = useMemo(() => {
     const epicSet = new Set(tasks.map(task => task.epic).filter(Boolean))
     return Array.from(epicSet)
   }, [tasks])
@@ -114,7 +137,7 @@ export default function Index() {
   const filteredTasks = useMemo(() => {
     return tasks.filter(task =>
       (selectedTags.length === 0 || selectedTags.every(tag => task.tags.includes(tag))) &&
-      (!selectedEpic || task.epic === selectedEpic) &&
+      (!selectedEpic || task.epic?.id === selectedEpic.id) &&
       (taskListFilter === "all" ||
        (taskListFilter === "important" && task.important) ||
        (taskListFilter === "completed" && task.completed))
@@ -125,21 +148,9 @@ export default function Index() {
     return allTags.filter(tag => tag.toLowerCase().includes(tagSearch.toLowerCase()))
   }, [allTags, tagSearch])
 
-  const updateTaskDetails = (id: string, newDetails: string) => {
-    setTasks(tasks.map(task =>
-      task.id === id ? { ...task, details: newDetails } : task
-    ))
-  }
-
-  const updateTaskDate = (id: string, field: 'startDate' | 'endDate', date: Date | null) => {
-    setTasks(tasks.map(task =>
-      task.id === id ? { ...task, [field]: date } : task
-    ))
-  }
-
   const getTaskListTitle = () => {
     if (selectedEpic) {
-      return `${selectedEpic}のタスク`
+      return `${selectedEpic.title}のタスク`
     } else if (selectedTags.length > 0) {
       return selectedTags.length === 1
         ? `${selectedTags[0]}のタスク`
@@ -182,10 +193,10 @@ export default function Index() {
   }
 
   const updateTimeEntry = (taskId: string, entryIndex: number, field: 'start' | 'end', value: string) => {
-    setTasks(tasks.map(task => {
+    setTasks(prevTasks => prevTasks.map(task => {
       if (task.id === taskId) {
         const newTimeEntries = [...task.timeEntries]
-        newTimeEntries[entryIndex][field] = value
+        newTimeEntries[entryIndex] = { ...newTimeEntries[entryIndex], [field]: value }
         return { ...task, timeEntries: newTimeEntries }
       }
       return task
@@ -220,13 +231,25 @@ export default function Index() {
     return () => clearInterval(interval)
   }, [])
 
+  const handleAddEpic = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (newEpicTitle.trim() !== "") {
+      const newEpic: Epic = {
+        id: Date.now().toString(),
+        title: newEpicTitle.trim(),
+        description: ""
+      }
+      setEpics(prevEpics => [...prevEpics, newEpic])
+      setNewEpicTitle("")
+    }
+  }
+
   return (
     <div className="flex flex-col h-screen bg-gray-100">
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
           taskListFilter={taskListFilter}
           setTaskListFilter={setTaskListFilter}
-          allEpics={allEpics}
           selectedEpic={selectedEpic}
           setSelectedEpic={setSelectedEpic}
           tagSearch={tagSearch}
@@ -234,6 +257,10 @@ export default function Index() {
           filteredTags={filteredTags}
           selectedTags={selectedTags}
           toggleTagSelection={toggleTagSelection}
+          epics={initialEpics}
+          newEpicTitle={newEpicTitle}
+          setNewEpicTitle={setNewEpicTitle}
+          handleAddEpic={handleAddEpic}
         />
         <div className="flex-1 p-8 overflow-auto">
           <h1 className="text-2xl font-bold mb-4">{getTaskListTitle()}</h1>
