@@ -1,4 +1,4 @@
-import React, { useState, useCallback, KeyboardEvent } from 'react'
+import React, { useState, useCallback, KeyboardEvent, useEffect } from 'react'
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Textarea } from "~/components/ui/textarea"
@@ -19,6 +19,8 @@ interface TaskDetailsProps {
   updateTimeEntry: (taskId: string, entryIndex: number, field: 'start' | 'end', value: string) => void;
   calculateTotalTime: (timeEntries: TimeEntry[]) => number;
   formatTime: (seconds: number) => string;
+  allTags: string[];
+  updateAllTags: (newTag: string) => void;
 }
 
 const TaskDetails: React.FC<TaskDetailsProps> = ({
@@ -30,11 +32,20 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
   addTag,
   updateTimeEntry,
   calculateTotalTime,
-  formatTime
+  formatTime,
+  allTags,
+  updateAllTags
 }) => {
   const [newTag, setNewTag] = useState("")
   const [localTitle, setLocalTitle] = useState(selectedTask.title)
   const [localDetails, setLocalDetails] = useState(selectedTask.details)
+  const [localTags, setLocalTags] = useState(selectedTask.tags)
+
+  useEffect(() => {
+    setLocalTitle(selectedTask.title)
+    setLocalDetails(selectedTask.details)
+    setLocalTags(selectedTask.tags)
+  }, [selectedTask])
 
   const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setLocalTitle(e.target.value)
@@ -71,6 +82,27 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
 
   const parseDate = (dateString: string) => {
     return parse(dateString, "yyyy年MM月dd日", new Date(), { locale: ja })
+  }
+
+  const handleAddTag = useCallback(() => {
+    if (newTag && !localTags.includes(newTag)) {
+      const updatedTags = [...localTags, newTag]
+      setLocalTags(updatedTags)
+      addTag(selectedTask.id, newTag)
+      if (!allTags.includes(newTag)) {
+        updateAllTags(newTag)
+      }
+      setNewTag("")
+    }
+  }, [newTag, selectedTask.id, localTags, addTag, allTags, updateAllTags])
+
+  const handleRemoveTag = useCallback((tag: string) => {
+    removeTag(selectedTask.id, tag)
+    setLocalTags(prevTags => prevTags.filter(t => t !== tag))
+  }, [selectedTask.id, removeTag])
+
+  const handleDateSelect = (field: 'startDate' | 'endDate') => (date: Date | undefined) => {
+    updateTaskDate(selectedTask.id, field, date || null)
   }
 
   return (
@@ -114,8 +146,8 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
             <PopoverContent className="w-auto p-0" align="start">
               <Calendar
                 mode="single"
-                selected={selectedTask.startDate}
-                onSelect={(date) => updateTaskDate(selectedTask.id, 'startDate', date)}
+                selected={selectedTask.startDate || undefined}
+                onSelect={handleDateSelect('startDate')}
                 initialFocus
                 locale={ja}
               />
@@ -138,8 +170,8 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
             <PopoverContent className="w-auto p-0" align="start">
               <Calendar
                 mode="single"
-                selected={selectedTask.endDate}
-                onSelect={(date) => updateTaskDate(selectedTask.id, 'endDate', date)}
+                selected={selectedTask.endDate || undefined}
+                onSelect={handleDateSelect('endDate')}
                 initialFocus
                 locale={ja}
               />
@@ -150,13 +182,13 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700">タグ</label>
         <div className="flex flex-wrap gap-2 mt-2">
-          {selectedTask.tags.map((tag, index) => (
+          {localTags.map((tag, index) => (
             <span key={index} className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-sm flex items-center">
               {tag}
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => removeTag(selectedTask.id, tag)}
+                onClick={() => handleRemoveTag(tag)}
                 className="ml-1 h-4 w-4 p-0"
               >
                 <X className="h-3 w-3" />
@@ -172,12 +204,7 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
             placeholder="新しいタグを追加"
             className="flex-1 mr-2"
           />
-          <Button onClick={() => {
-            if (newTag && !selectedTask.tags.includes(newTag)) {
-              addTag(selectedTask.id, newTag)
-              setNewTag("")
-            }
-          }}>
+          <Button onClick={handleAddTag}>
             追加
           </Button>
         </div>

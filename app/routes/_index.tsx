@@ -47,6 +47,12 @@ export default function Index() {
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [epics, setEpics] = useState<Epic[]>([])
   const [newEpicTitle, setNewEpicTitle] = useState("")
+  const [allTags, setAllTags] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    const tagSet = new Set(tasks.flatMap(task => task.tags))
+    setAllTags(tagSet)
+  }, [tasks])
 
   const addTask = () => {
     if (newTask.trim() !== "") {
@@ -102,16 +108,35 @@ export default function Index() {
     ))
   }
 
-  const addTag = (taskId: string, newTag: string) => {
-    setTasks(prevTasks => prevTasks.map(task =>
-      task.id === taskId ? { ...task, tags: [...task.tags, newTag] } : task
-    ))
+  const removeTag = (taskId: string, tagToRemove: string) => {
+    setTasks(prevTasks => {
+      const updatedTasks = prevTasks.map(task =>
+        task.id === taskId ? { ...task, tags: task.tags.filter(tag => tag !== tagToRemove) } : task
+      )
+      const isTagUsed = updatedTasks.some(task => task.tags.includes(tagToRemove))
+      if (!isTagUsed) {
+        setAllTags(prevTags => {
+          const newTags = new Set(prevTags)
+          newTags.delete(tagToRemove)
+          return newTags
+        })
+      }
+      return updatedTasks
+    })
   }
 
-  const removeTag = (taskId: string, tagToRemove: string) => {
-    setTasks(prevTasks => prevTasks.map(task =>
-      task.id === taskId ? { ...task, tags: task.tags.filter(tag => tag !== tagToRemove) } : task
-    ))
+  const addTag = (taskId: string, newTag: string) => {
+    setTasks(prevTasks => {
+      const updatedTasks = prevTasks.map(task =>
+        task.id === taskId ? { ...task, tags: [...new Set([...task.tags, newTag])] } : task
+      )
+      return updatedTasks
+    })
+    setAllTags(prevTags => new Set(prevTags).add(newTag))
+  }
+
+  const updateAllTags = (newTag: string) => {
+    setAllTags(prevTags => new Set(prevTags).add(newTag))
   }
 
   const toggleTagSelection = (tag: string) => {
@@ -123,11 +148,6 @@ export default function Index() {
       }
     })
   }
-
-  const allTags = useMemo(() => {
-    const tagSet = new Set(tasks.flatMap(task => task.tags))
-    return Array.from(tagSet)
-  }, [tasks])
 
   const assignedEpics = useMemo(() => {
     const epicSet = new Set(tasks.map(task => task.epic).filter(Boolean))
@@ -145,7 +165,7 @@ export default function Index() {
   }, [tasks, selectedTags, selectedEpic, taskListFilter])
 
   const filteredTags = useMemo(() => {
-    return allTags.filter(tag => tag.toLowerCase().includes(tagSearch.toLowerCase()))
+    return Array.from(allTags).filter(tag => tag.toLowerCase().includes(tagSearch.toLowerCase()))
   }, [allTags, tagSearch])
 
   const getTaskListTitle = () => {
@@ -303,6 +323,8 @@ export default function Index() {
             updateTimeEntry={updateTimeEntry}
             calculateTotalTime={calculateTotalTime}
             formatTime={formatTime}
+            allTags={Array.from(allTags)}
+            updateAllTags={updateAllTags}
           />
         )}
       </div>
