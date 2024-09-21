@@ -2,7 +2,7 @@ import React from 'react'
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Checkbox } from "~/components/ui/checkbox"
-import { Star, Pin, X, GripVertical, MoreVertical } from "lucide-react" // Pin を使用
+import { Star, Pin, X, GripVertical, MoreVertical } from "lucide-react"
 import { Draggable, Droppable } from 'react-beautiful-dnd'
 import type { Task } from '~/types/task'
 
@@ -17,7 +17,7 @@ interface TaskListProps {
   removeTag: (taskId: string, tag: string) => void;
   addTag: (taskId: string, tag: string) => void;
   setSelectedTask: (task: Task) => void;
-  deleteTask: (id: string) => void; // 削除機能を追加
+  deleteTask: (id: string) => void;
 }
 
 const TaskList: React.FC<TaskListProps> = ({
@@ -31,7 +31,7 @@ const TaskList: React.FC<TaskListProps> = ({
   removeTag,
   addTag,
   setSelectedTask,
-  deleteTask // 削除機能を追加
+  deleteTask
 }) => {
   return (
     <Droppable droppableId="tasks">
@@ -43,15 +43,17 @@ const TaskList: React.FC<TaskListProps> = ({
                 <li
                   ref={provided.innerRef}
                   {...provided.draggableProps}
-                  className={`mb-4 bg-white p-3 rounded shadow ${snapshot.isDragging ? 'opacity-50' : ''}`}
+                  className={`mb-4 bg-white p-3 rounded shadow ${snapshot.isDragging ? 'opacity-50' : ''} cursor-pointer`}
+                  onClick={() => setSelectedTask(task)} // カード全体をクリッカブルに
                 >
                   <div className="flex items-center mb-2">
-                    <div {...provided.dragHandleProps} className="mr-2 cursor-move">
+                    <div {...provided.dragHandleProps} className="mr-2 cursor-move" onClick={(e) => e.stopPropagation()}>
                       <GripVertical className="h-4 w-4 text-gray-400" />
                     </div>
                     <Checkbox
                       checked={task.completed}
                       onCheckedChange={() => toggleComplete(task.id)}
+                      onClick={(e) => e.stopPropagation()} // イベントの伝播を停止
                     />
                     {editingTaskId === task.id ? (
                       <Input
@@ -61,22 +63,20 @@ const TaskList: React.FC<TaskListProps> = ({
                         onBlur={() => setEditingTaskId(null)}
                         autoFocus
                         className="ml-2 flex-1"
+                        onClick={(e) => e.stopPropagation()} // イベントの伝播を停止
                       />
                     ) : (
-                      <span
-                        className={`ml-2 flex-1 cursor-pointer ${task.completed ? 'line-through text-gray-500' : ''}`}
-                        onClick={() => {
-                          setEditingTaskId(task.id);
-                          setSelectedTask(task);
-                        }}
-                      >
+                      <span className={`ml-2 flex-1 ${task.completed ? 'line-through text-gray-500' : ''}`}>
                         {task.title}
                       </span>
                     )}
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => toggleImportant(task.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleImportant(task.id);
+                      }}
                       className={`${task.important ? 'text-yellow-500' : ''} hover:bg-transparent`}
                     >
                       <Star className="h-4 w-4" />
@@ -84,18 +84,21 @@ const TaskList: React.FC<TaskListProps> = ({
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => togglePin(task.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        togglePin(task.id);
+                      }}
                       className={`${task.pinned ? 'text-blue-500' : ''} hover:bg-transparent`}
                     >
-                      <Pin className="h-4 w-4" /> {/* PinIcon を Pin に変更 */}
-                    </Button>
-                    <Button variant="ghost" size="icon">
-                      <MoreVertical className="h-4 w-4" />
+                      <Pin className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => deleteTask(task.id)} // 削除機能を呼び出す
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteTask(task.id);
+                      }}
                       className="ml-2"
                     >
                       <X className="h-4 w-4" />
@@ -103,12 +106,19 @@ const TaskList: React.FC<TaskListProps> = ({
                   </div>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {task.tags.map((tag) => (
-                      <span key={`${task.id}-${tag}`} className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-sm flex items-center">
+                      <span
+                        key={`${task.id}-${tag}`}
+                        className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-sm flex items-center"
+                        onClick={(e) => e.stopPropagation()} // イベントの伝播を停止
+                      >
                         {tag}
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => removeTag(task.id, tag)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeTag(task.id, tag);
+                          }}
                           className="ml-1 h-4 w-4 p-0"
                         >
                           <X className="h-3 w-3" />
@@ -118,7 +128,8 @@ const TaskList: React.FC<TaskListProps> = ({
                   </div>
                   <form
                     onSubmit={(e) => {
-                      e.preventDefault()
+                      e.preventDefault();
+                      e.stopPropagation(); // イベントの伝播を停止
                       const form = e.currentTarget as HTMLFormElement;
                       const newTagInput = form.elements.namedItem('newTag') as HTMLInputElement;
                       const newTag = newTagInput.value.trim()
@@ -128,6 +139,7 @@ const TaskList: React.FC<TaskListProps> = ({
                       }
                     }}
                     className="mt-2"
+                    onClick={(e) => e.stopPropagation()} // イベントの伝播を停止
                   >
                     <Input
                       type="text"
