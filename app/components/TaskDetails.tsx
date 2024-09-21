@@ -21,6 +21,7 @@ interface TaskDetailsProps {
   formatTime: (seconds: number) => string;
   allTags: string[];
   updateAllTags: (newTag: string) => void;
+  onClose: () => void; // 新しく追加
 }
 
 const TaskDetails: React.FC<TaskDetailsProps> = ({
@@ -34,7 +35,8 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
   calculateTotalTime,
   formatTime,
   allTags,
-  updateAllTags
+  updateAllTags,
+  onClose // 新しく追加
 }) => {
   const [newTag, setNewTag] = useState("")
   const [localTitle, setLocalTitle] = useState(selectedTask.title)
@@ -108,7 +110,15 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
   }
 
   return (
-    <div className="w-1/3 bg-white p-4 shadow overflow-y-auto">
+    <div className="w-1/3 bg-white p-4 shadow overflow-y-auto relative"> {/* relative を追加 */}
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={onClose}
+        className="absolute top-2 right-2" // 位置を調整
+      >
+        <X className="h-4 w-4" />
+      </Button>
       <div className="mb-4">
         <label htmlFor="task-title" className="block text-sm font-medium text-gray-700">タイトル</label>
         <Input

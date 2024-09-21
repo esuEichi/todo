@@ -46,7 +46,13 @@ export default function Index() {
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [selectedEpic, setSelectedEpic] = useState<Epic | null>(null)
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  const [selectedTask, setSelectedTask] = useState<Task | null>(() => {
+    if (typeof window !== 'undefined') {
+      const storedSelectedTask = localStorage.getItem('selectedTask')
+      return storedSelectedTask ? JSON.parse(storedSelectedTask) : null
+    }
+    return null
+  })
   const [tagSearch, setTagSearch] = useState("")
   const [taskListFilter, setTaskListFilter] = useState("all")
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -301,8 +307,33 @@ export default function Index() {
     }
   }, [tasks])
 
+  // 選択されたタスクが変更されたときにローカルストレージに保存
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (selectedTask) {
+        localStorage.setItem('selectedTask', JSON.stringify(selectedTask))
+      } else {
+        localStorage.removeItem('selectedTask')
+      }
+    }
+  }, [selectedTask])
+
+  // タスクが変更されたときに選択されたタスクも更新
+  useEffect(() => {
+    if (selectedTask) {
+      const updatedSelectedTask = tasks.find(task => task.id === selectedTask.id)
+      if (updatedSelectedTask) {
+        setSelectedTask(updatedSelectedTask)
+      }
+    }
+  }, [tasks, selectedTask])
+
   const deleteTask = (id: string) => {
     setTasks(prevTasks => prevTasks.filter(task => task.id !== id))
+  }
+
+  const closeTaskDetails = () => {
+    setSelectedTask(null)
   }
 
   return (
@@ -370,6 +401,7 @@ export default function Index() {
             formatTime={formatTime}
             allTags={Array.from(allTags)}
             updateAllTags={updateAllTags}
+            onClose={closeTaskDetails}
           />
         )}
       </div>
