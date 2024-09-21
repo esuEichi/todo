@@ -7,7 +7,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover
 import { format, parse } from "date-fns"
 import { ja } from "date-fns/locale"
 import { CalendarIcon, X } from "lucide-react"
-import type { Task, TimeEntry } from '~/types/task'
+import type { Task, TimeEntry, Epic } from '~/types/task'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 
 interface TaskDetailsProps {
   selectedTask: Task;
@@ -22,6 +23,8 @@ interface TaskDetailsProps {
   allTags: string[];
   updateAllTags: (newTag: string) => void;
   onClose: () => void; // 新しく追加
+  updateTaskEpic: (taskId: string, epicId: string | null) => void;
+  epics: Epic[];
 }
 
 const TaskDetails: React.FC<TaskDetailsProps> = ({
@@ -36,7 +39,9 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
   formatTime,
   allTags,
   updateAllTags,
-  onClose // 新しく追加
+  onClose,
+  updateTaskEpic,
+  epics,
 }) => {
   const [newTag, setNewTag] = useState("")
   const [localTitle, setLocalTitle] = useState(selectedTask.title)
@@ -109,6 +114,10 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
     }
   }
 
+  const handleEpicChange = (epicId: string) => {
+    updateTaskEpic(selectedTask.id, epicId === 'none' ? null : epicId)
+  }
+
   return (
     <div className="w-1/3 bg-white p-4 shadow overflow-y-auto relative"> {/* relative を追加 */}
       <Button
@@ -133,13 +142,22 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
       </div>
       <div className="mb-4">
         <label htmlFor="task-epic" className="block text-sm font-medium text-gray-700">エピック</label>
-        <Input
-          id="task-epic"
-          type="text"
-          value={selectedTask.epic?.title || ''}
-          readOnly
-          className="mt-1"
-        />
+        <Select
+          onValueChange={handleEpicChange}
+          defaultValue={selectedTask.epic?.id || 'none'}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="エピックを選択" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">なし</SelectItem>
+            {epics.map((epic) => (
+              <SelectItem key={epic.id} value={epic.id}>
+                {epic.title}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div className="mb-4 flex space-x-4">
         <div className="flex-1">

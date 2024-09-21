@@ -11,6 +11,7 @@ import PinnedTasks from '~/components/PinnedTasks'
 import { sortTasks, calculateTotalTime, formatTime } from '~/utils/taskUtils'
 import { DragDropContext, DropResult } from 'react-beautiful-dnd'
 import { Epic } from '~/types/task'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 
 import type { LoaderFunction } from '@remix-run/node'
 import type { Task } from '~/types/task'
@@ -56,7 +57,7 @@ export default function Index() {
   const [tagSearch, setTagSearch] = useState("")
   const [taskListFilter, setTaskListFilter] = useState("all")
   const scrollContainerRef = useRef<HTMLDivElement>(null)
-  const [epics, setEpics] = useState<Epic[]>([])
+  const [epics, setEpics] = useState<Epic[]>(initialEpics)
   const [newEpicTitle, setNewEpicTitle] = useState("")
   const [allTags, setAllTags] = useState<Set<string>>(new Set())
   const [isComposing, setIsComposing] = useState(false)
@@ -218,7 +219,7 @@ export default function Index() {
         case "completed":
           return "完済みのタスク"
         default:
-          return "すべてのタスク"
+          return "すべてのタス"
       }
     }
   }
@@ -293,12 +294,24 @@ export default function Index() {
       const newEpic: Epic = {
         id: Date.now().toString(),
         title: newEpicTitle.trim(),
-        description: ""
+        description: "",
+        createdAt: new Date().toISOString() // 作成日時を追加
       }
-      setEpics(prevEpics => [...prevEpics, newEpic])
+      setEpics(prevEpics => [newEpic, ...prevEpics]) // ��しいエピックを配列の先頭に追加
       setNewEpicTitle("")
     }
   }
+
+  // エピックをソートする関数
+  const sortedEpics = useMemo(() => {
+    return [...epics].sort((a, b) => {
+      // createdAtがない場合（既存のエピック）は最後にソート
+      if (!a.createdAt) return 1
+      if (!b.createdAt) return -1
+      // 新しい順にソート
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    })
+  }, [epics])
 
   // タスクが変更されたときにローカルストレージに保存
   useEffect(() => {
@@ -318,7 +331,7 @@ export default function Index() {
     }
   }, [selectedTask])
 
-  // タスクが変更されたときに選択されたタスクも更新
+  // タスクが変されたときに選択されたタスクも更新
   useEffect(() => {
     if (selectedTask) {
       const updatedSelectedTask = tasks.find(task => task.id === selectedTask.id)
@@ -336,6 +349,12 @@ export default function Index() {
     setSelectedTask(null)
   }
 
+  const updateTaskEpic = (taskId: string, epicId: string | null) => {
+    setTasks(prevTasks => prevTasks.map(task =>
+      task.id === taskId ? { ...task, epic: epicId ? epics.find(e => e.id === epicId) || null : null } : task
+    ))
+  }
+
   return (
     <div className="flex flex-col h-screen bg-gray-100">
       <div className="flex flex-1 overflow-hidden">
@@ -349,7 +368,7 @@ export default function Index() {
           filteredTags={filteredTags}
           selectedTags={selectedTags}
           toggleTagSelection={toggleTagSelection}
-          epics={initialEpics}
+          epics={sortedEpics}
           newEpicTitle={newEpicTitle}
           setNewEpicTitle={setNewEpicTitle}
           handleAddEpic={handleAddEpic}
@@ -402,6 +421,8 @@ export default function Index() {
             allTags={Array.from(allTags)}
             updateAllTags={updateAllTags}
             onClose={closeTaskDetails}
+            updateTaskEpic={updateTaskEpic}
+            epics={sortedEpics}
           />
         )}
       </div>
@@ -409,6 +430,7 @@ export default function Index() {
         tasks={tasks.filter(task => task.pinned)}
         togglePin={togglePin}
         toggleTaskRunning={toggleTaskRunning}
+        toggleComplete={toggleComplete}
         calculateTotalTime={calculateTotalTime}
         formatTime={formatTime}
       />

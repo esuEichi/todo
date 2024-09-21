@@ -1,8 +1,9 @@
 // app/types/task.ts
-export type Epic = {
+export interface Epic {
   id: string;
   title: string;
   description: string;
+  createdAt?: string; // オプショナルプロパティとして追加
 };
 
 export type Task = {
