@@ -6,7 +6,7 @@ import { Calendar } from "~/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
 import { format, parse } from "date-fns"
 import { ja } from "date-fns/locale"
-import { CalendarIcon, X } from "lucide-react"
+import { CalendarIcon, X, Plus, Trash2, Edit2 } from "lucide-react"
 import type { Task, TimeEntry, Epic } from '~/types/task'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 
@@ -18,11 +18,13 @@ interface TaskDetailsProps {
   removeTag: (taskId: string, tag: string) => void;
   addTag: (taskId: string, tag: string) => void;
   updateTimeEntry: (taskId: string, entryIndex: number, field: 'start' | 'end', value: string) => void;
+  addTimeEntry: (taskId: string) => void;
+  removeTimeEntry: (taskId: string, entryIndex: number) => void;
   calculateTotalTime: (timeEntries: TimeEntry[]) => number;
-  formatTime: (seconds: number) => string;
+  formatTime: (seconds: number, showSeconds?: boolean) => string;
   allTags: string[];
   updateAllTags: (newTag: string) => void;
-  onClose: () => void; // 新しく追加
+  onClose: () => void;
   updateTaskEpic: (taskId: string, epicId: string | null) => void;
   epics: Epic[];
 }
@@ -35,6 +37,8 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
   removeTag,
   addTag,
   updateTimeEntry,
+  addTimeEntry,
+  removeTimeEntry,
   calculateTotalTime,
   formatTime,
   allTags,
@@ -47,6 +51,9 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
   const [localTitle, setLocalTitle] = useState(selectedTask.title)
   const [localDetails, setLocalDetails] = useState(selectedTask.details)
   const [localTags, setLocalTags] = useState(selectedTask.tags)
+  const [editingTimeEntry, setEditingTimeEntry] = useState<number | null>(null)
+  const [editedStart, setEditedStart] = useState("")
+  const [editedEnd, setEditedEnd] = useState("")
 
   useEffect(() => {
     setLocalTitle(selectedTask.title)
@@ -118,13 +125,40 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
     updateTaskEpic(selectedTask.id, epicId === 'none' ? null : epicId)
   }
 
+  const handleAddTimeEntry = () => {
+    addTimeEntry(selectedTask.id)
+  }
+
+  const handleRemoveTimeEntry = (index: number) => {
+    removeTimeEntry(selectedTask.id, index)
+  }
+
+  const handleEditTimeEntry = (index: number) => {
+    const entry = selectedTask.timeEntries[index]
+    setEditingTimeEntry(index)
+    setEditedStart(format(new Date(entry.start), "yyyy-MM-dd'T'HH:mm:ss"))
+    setEditedEnd(entry.end ? format(new Date(entry.end), "yyyy-MM-dd'T'HH:mm:ss") : "")
+  }
+
+  const handleSaveTimeEntry = () => {
+    if (editingTimeEntry !== null) {
+      updateTimeEntry(selectedTask.id, editingTimeEntry, 'start', editedStart)
+      updateTimeEntry(selectedTask.id, editingTimeEntry, 'end', editedEnd)
+      setEditingTimeEntry(null)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setEditingTimeEntry(null)
+  }
+
   return (
-    <div className="w-1/3 bg-white p-4 shadow overflow-y-auto relative"> {/* relative を追加 */}
+    <div className="w-1/3 bg-white p-4 shadow overflow-y-auto relative">
       <Button
         variant="ghost"
         size="icon"
         onClick={onClose}
-        className="absolute top-2 right-2" // 位置を調整
+        className="absolute top-2 right-2"
       >
         <X className="h-4 w-4" />
       </Button>
@@ -254,25 +288,83 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
       </div>
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700">実施時間</label>
-        <p className="mt-1">{formatTime(calculateTotalTime(selectedTask.timeEntries))}</p>
+        <p className="mt-1">{formatTime(calculateTotalTime(selectedTask.timeEntries), true)}</p>
       </div>
       <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700">時間エントリー</label>
-        {selectedTask.timeEntries.map((entry, index) => (
-          <div key={index} className="flex items-center mt-2">
-            <Input
-              type="datetime-local"
-              value={entry.start ? format(new Date(entry.start), "yyyy-MM-dd'T'HH:mm") : ''}
-              onChange={(e) => updateTimeEntry(selectedTask.id, index, 'start', e.target.value)}
-              className="mr-2"
-            />
-            <Input
-              type="datetime-local"
-              value={entry.end ? format(new Date(entry.end), "yyyy-MM-dd'T'HH:mm") : ''}
-              onChange={(e) => updateTimeEntry(selectedTask.id, index, 'end', e.target.value)}
-            />
-          </div>
-        ))}
+        <label className="block text-sm font-medium text-gray-700 mb-2">時間エントリー</label>
+        <div className="space-y-2">
+          {selectedTask.timeEntries.map((entry, index) => (
+            <div key={index} className="bg-gray-50 p-2 rounded-lg shadow-sm">
+              {editingTimeEntry === index ? (
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      type="datetime-local"
+                      value={editedStart}
+                      onChange={(e) => setEditedStart(e.target.value)}
+                      className="flex-1 text-xs"
+                      step="1"
+                    />
+                    <span>-</span>
+                    <Input
+                      type="datetime-local"
+                      value={editedEnd}
+                      onChange={(e) => setEditedEnd(e.target.value)}
+                      className="flex-1 text-xs"
+                      step="1"
+                    />
+                  </div>
+                  <div className="flex justify-end space-x-2">
+                    <Button variant="outline" size="sm" onClick={handleSaveTimeEntry}>
+                      保存
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={handleCancelEdit}>
+                      キャンセル
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex-1 mr-2">
+                    <span className="font-medium">{format(new Date(entry.start), "yyyy-MM-dd HH:mm:ss")}</span>
+                    <span className="mx-1">-</span>
+                    <span className="font-medium">{entry.end ? format(new Date(entry.end), "yyyy-MM-dd HH:mm:ss") : "進行中"}</span>
+                  </div>
+                  <div className="flex items-center space-x-2 flex-shrink-0">
+                    <span className="text-gray-500">
+                      {formatTime(calculateTotalTime([entry]), true)}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEditTimeEntry(index)}
+                      className="p-1"
+                    >
+                      <Edit2 className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveTimeEntry(index)}
+                      className="text-red-500 p-1"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleAddTimeEntry}
+          className="mt-2"
+        >
+          <Plus className="h-4 w-4 mr-1" />
+          時間エントリーを追加
+        </Button>
       </div>
     </div>
   )

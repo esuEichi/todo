@@ -18,8 +18,14 @@ export const calculateTotalTime = (timeEntries: TimeEntry[]): number => {
   }, 0)
 }
 
-export const formatTime = (seconds: number): string => {
+export const formatTime = (seconds: number, showSeconds: boolean = false): string => {
   const hours = Math.floor(seconds / 3600)
   const minutes = Math.floor((seconds % 3600) / 60)
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+  const remainingSeconds = seconds % 60
+
+  if (showSeconds) {
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`
+  } else {
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+  }
 }

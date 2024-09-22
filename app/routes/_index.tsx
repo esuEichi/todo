@@ -260,6 +260,30 @@ export default function Index() {
     }))
   }
 
+  const addTimeEntry = (taskId: string) => {
+    setTasks(prevTasks => prevTasks.map(task => {
+      if (task.id === taskId) {
+        const now = new Date().toISOString()
+        return {
+          ...task,
+          timeEntries: [...task.timeEntries, { start: now, end: now }]
+        }
+      }
+      return task
+    }))
+  }
+
+  const removeTimeEntry = (taskId: string, entryIndex: number) => {
+    setTasks(prevTasks => prevTasks.map(task => {
+      if (task.id === taskId) {
+        const newTimeEntries = [...task.timeEntries]
+        newTimeEntries.splice(entryIndex, 1)
+        return { ...task, timeEntries: newTimeEntries }
+      }
+      return task
+    }))
+  }
+
   const onDragEnd = (result: DropResult) => {
     if (!result.destination) return
 
@@ -297,7 +321,7 @@ export default function Index() {
         description: "",
         createdAt: new Date().toISOString() // 作成日時を追加
       }
-      setEpics(prevEpics => [newEpic, ...prevEpics]) // ��しいエピックを配列の先頭に追加
+      setEpics(prevEpics => [newEpic, ...prevEpics]) // 新しいエピックを配列の先頭に追加
       setNewEpicTitle("")
     }
   }
@@ -416,6 +440,8 @@ export default function Index() {
             removeTag={removeTag}
             addTag={addTag}
             updateTimeEntry={updateTimeEntry}
+            addTimeEntry={addTimeEntry}
+            removeTimeEntry={removeTimeEntry}
             calculateTotalTime={calculateTotalTime}
             formatTime={formatTime}
             allTags={Array.from(allTags)}
