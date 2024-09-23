@@ -12,6 +12,7 @@ import { sortTasks, calculateTotalTime, formatTime } from '~/utils/taskUtils'
 import { DragDropContext, DropResult } from 'react-beautiful-dnd'
 import { Epic } from '~/types/task'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
+import ProductivityManager from '~/components/ProductivityManager'
 
 import type { LoaderFunction } from '@remix-run/node'
 import type { Task } from '~/types/task'
@@ -43,10 +44,13 @@ export default function Index() {
     }
     return initialTasks
   })
-  const [newTask, setNewTask] = useState("")
-  const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
-  const [selectedTags, setSelectedTags] = useState<string[]>([])
-  const [selectedEpic, setSelectedEpic] = useState<Epic | null>(null)
+  const [epics, setEpics] = useState<Epic[]>(() => {
+    if (typeof window !== 'undefined') {
+      const storedEpics = localStorage.getItem('epics')
+      return storedEpics ? JSON.parse(storedEpics) : initialEpics
+    }
+    return initialEpics
+  })
   const [selectedTask, setSelectedTask] = useState<Task | null>(() => {
     if (typeof window !== 'undefined') {
       const storedSelectedTask = localStorage.getItem('selectedTask')
@@ -54,22 +58,51 @@ export default function Index() {
     }
     return null
   })
+  const [allTags, setAllTags] = useState<Set<string>>(() => {
+    if (typeof window !== 'undefined') {
+      const storedTags = localStorage.getItem('allTags')
+      return new Set(storedTags ? JSON.parse(storedTags) : [])
+    }
+    return new Set()
+  })
+  const [newTask, setNewTask] = useState("")
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [selectedEpic, setSelectedEpic] = useState<Epic | null>(null)
   const [tagSearch, setTagSearch] = useState("")
   const [taskListFilter, setTaskListFilter] = useState("all")
   const scrollContainerRef = useRef<HTMLDivElement>(null)
-  const [epics, setEpics] = useState<Epic[]>(initialEpics)
   const [newEpicTitle, setNewEpicTitle] = useState("")
-  const [allTags, setAllTags] = useState<Set<string>>(new Set())
   const [isComposing, setIsComposing] = useState(false)
+  const [showProductivityManager, setShowProductivityManager] = useState(false)
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const storedTasks = localStorage.getItem('tasks')
-      if (storedTasks) {
-        setTasks(JSON.parse(storedTasks))
+      localStorage.setItem('tasks', JSON.stringify(tasks))
+    }
+  }, [tasks])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('epics', JSON.stringify(epics))
+    }
+  }, [epics])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (selectedTask) {
+        localStorage.setItem('selectedTask', JSON.stringify(selectedTask))
+      } else {
+        localStorage.removeItem('selectedTask')
       }
     }
-  }, [])
+  }, [selectedTask])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('allTags', JSON.stringify(Array.from(allTags)))
+    }
+  }, [allTags])
 
   useEffect(() => {
     const tagSet = new Set(tasks.flatMap(task => task.tags))
@@ -215,7 +248,7 @@ export default function Index() {
     } else {
       switch (taskListFilter) {
         case "important":
-          return "重要なタスク"
+          return "要なタスク"
         case "completed":
           return "完済みのタスク"
         default:
@@ -231,18 +264,22 @@ export default function Index() {
   }
 
   const toggleTaskRunning = (id: string) => {
-    setTasks(tasks.map(task => {
+    setTasks(prevTasks => prevTasks.map(task => {
       if (task.id === id) {
+        const now = new Date()
         if (task.isRunning) {
-          const now = new Date()
-          const lastEntry = task.timeEntries[task.timeEntries.length - 1]
-          if (lastEntry) {
-            lastEntry.end = now.toISOString()
-          }
-          return { ...task, isRunning: false, timeEntries: [...task.timeEntries] }
+          // タスクが実行中の場合、最後の時間エントリーを更新
+          const updatedTimeEntries = task.timeEntries.map((entry, index) => {
+            if (index === task.timeEntries.length - 1 && entry.end === null) {
+              return { ...entry, end: now.toISOString() }
+            }
+            return entry
+          })
+          return { ...task, isRunning: false, timeEntries: updatedTimeEntries }
         } else {
-          const now = new Date()
-          return { ...task, isRunning: true, timeEntries: [...task.timeEntries, { start: now.toISOString(), end: null }] }
+          // タスクが停止中の場合、新しい時間エントリーを追加
+          const newTimeEntry = { start: now.toISOString(), end: null }
+          return { ...task, isRunning: true, timeEntries: [...task.timeEntries, newTimeEntry] }
         }
       }
       return task
@@ -319,9 +356,9 @@ export default function Index() {
         id: Date.now().toString(),
         title: newEpicTitle.trim(),
         description: "",
-        createdAt: new Date().toISOString() // 作成日時を追加
+        createdAt: new Date().toISOString()
       }
-      setEpics(prevEpics => [newEpic, ...prevEpics]) // 新しいエピックを配列の先頭に追加
+      setEpics(prevEpics => [newEpic, ...prevEpics])
       setNewEpicTitle("")
     }
   }
@@ -329,41 +366,13 @@ export default function Index() {
   // エピックをソートする関数
   const sortedEpics = useMemo(() => {
     return [...epics].sort((a, b) => {
-      // createdAtがない場合（既存のエピック）は最後にソート
+      // createdAtがない場合（既存のエピッ配列）は最後にソート
       if (!a.createdAt) return 1
       if (!b.createdAt) return -1
       // 新しい順にソート
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     })
   }, [epics])
-
-  // タスクが変更されたときにローカルストレージに保存
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('tasks', JSON.stringify(tasks))
-    }
-  }, [tasks])
-
-  // 選択されたタスクが変更されたときにローカルストレージに保存
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      if (selectedTask) {
-        localStorage.setItem('selectedTask', JSON.stringify(selectedTask))
-      } else {
-        localStorage.removeItem('selectedTask')
-      }
-    }
-  }, [selectedTask])
-
-  // タスクが変されたときに選択されたタスクも更新
-  useEffect(() => {
-    if (selectedTask) {
-      const updatedSelectedTask = tasks.find(task => task.id === selectedTask.id)
-      if (updatedSelectedTask) {
-        setSelectedTask(updatedSelectedTask)
-      }
-    }
-  }, [tasks, selectedTask])
 
   const deleteTask = (id: string) => {
     setTasks(prevTasks => prevTasks.filter(task => task.id !== id))
@@ -377,6 +386,10 @@ export default function Index() {
     setTasks(prevTasks => prevTasks.map(task =>
       task.id === taskId ? { ...task, epic: epicId ? epics.find(e => e.id === epicId) || null : null } : task
     ))
+  }
+
+  const toggleProductivityManager = () => {
+    setShowProductivityManager(prev => !prev)
   }
 
   return (
@@ -431,26 +444,40 @@ export default function Index() {
             />
           </DragDropContext>
         </div>
-        {selectedTask && (
-          <TaskDetails
-            selectedTask={selectedTask}
-            updateTaskTitle={updateTaskTitle}
-            updateTaskDetails={updateTaskDetails}
-            updateTaskDate={updateTaskDate}
-            removeTag={removeTag}
-            addTag={addTag}
-            updateTimeEntry={updateTimeEntry}
-            addTimeEntry={addTimeEntry}
-            removeTimeEntry={removeTimeEntry}
-            calculateTotalTime={calculateTotalTime}
-            formatTime={formatTime}
-            allTags={Array.from(allTags)}
-            updateAllTags={updateAllTags}
-            onClose={closeTaskDetails}
-            updateTaskEpic={updateTaskEpic}
-            epics={sortedEpics}
-          />
-        )}
+        <div className="flex w-[768px]">
+          {selectedTask ? (
+            <div className="w-1/2">
+              <TaskDetails
+                selectedTask={selectedTask}
+                updateTaskTitle={updateTaskTitle}
+                updateTaskDetails={updateTaskDetails}
+                updateTaskDate={updateTaskDate}
+                removeTag={removeTag}
+                addTag={addTag}
+                updateTimeEntry={updateTimeEntry}
+                addTimeEntry={addTimeEntry}
+                removeTimeEntry={removeTimeEntry}
+                calculateTotalTime={calculateTotalTime}
+                formatTime={formatTime}
+                allTags={Array.from(allTags)}
+                updateAllTags={updateAllTags}
+                onClose={closeTaskDetails}
+                updateTaskEpic={updateTaskEpic}
+                epics={sortedEpics}
+              />
+            </div>
+          ) : (
+            <div className="w-1/2 bg-white shadow-xl p-6">
+              <p className="text-center text-gray-500">タスクを選択してください</p>
+            </div>
+          )}
+          <div className="w-1/2">
+            <ProductivityManager
+              tasks={tasks}
+              onSelectTask={setSelectedTask}
+            />
+          </div>
+        </div>
       </div>
       <PinnedTasks
         tasks={tasks.filter(task => task.pinned)}

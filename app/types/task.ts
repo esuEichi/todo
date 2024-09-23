@@ -6,7 +6,7 @@ export interface Epic {
   createdAt?: string; // オプショナルプロパティとして追加
 };
 
-export type Task = {
+export interface Task {
   id: string;
   title: string;
   completed: boolean;
@@ -14,12 +14,12 @@ export type Task = {
   tags: string[];
   epic: Epic | null;
   details: string;
-  startDate: Date | null;
-  endDate: Date | null;
+  startDate: string | null;
+  endDate: string | null;
   pinned: boolean;
   timeEntries: TimeEntry[];
   isRunning: boolean;
-};
+}
 
 export interface TimeEntry {
   start: string;
