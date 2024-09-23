@@ -1,16 +1,15 @@
 import React from 'react'
+import { Task } from '~/types/task'
 import { Button } from "~/components/ui/button"
-import { Checkbox } from "~/components/ui/checkbox"
-import { Pin, Play, Pause } from "lucide-react"
-import type { Task } from '~/types/task'
+import { Play, Pause, X } from "lucide-react"
 
 interface PinnedTasksProps {
-  tasks: Task[];
-  togglePin: (id: string) => void;
-  toggleTaskRunning: (id: string) => void;
-  toggleComplete: (id: string) => void;
-  calculateTotalTime: (timeEntries: Task['timeEntries']) => number;
-  formatTime: (seconds: number) => string;
+  tasks: Task[]
+  togglePin: (id: string) => void
+  toggleTaskRunning: (id: string) => void
+  toggleComplete: (id: string) => void
+  calculateTotalTime: (task: Task) => number
+  formatTime: (seconds: number) => string
 }
 
 const PinnedTasks: React.FC<PinnedTasksProps> = ({
@@ -22,39 +21,28 @@ const PinnedTasks: React.FC<PinnedTasksProps> = ({
   formatTime
 }) => {
   return (
-    <div className="bg-gray-200 p-4">
-      <h2 className="text-lg font-semibold mb-2">ピン留めされたタスク</h2>
-      <div className="flex flex-wrap gap-2">
+    <div className="fixed bottom-0 left-0 right-0 bg-white shadow-lg p-4">
+      <h2 className="text-lg font-bold mb-2">ピン留めされたタスク</h2>
+      <div className="flex space-x-4 overflow-x-auto">
         {tasks.map(task => (
-          <div key={task.id} className="bg-white p-2 rounded shadow flex items-center">
-            <Checkbox
-              checked={task.completed}
-              onCheckedChange={() => toggleComplete(task.id)}
-              className="mr-2"
-            />
-            <span className={`mr-2 ${task.completed ? 'line-through text-gray-500' : ''}`}>{task.title}</span>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => toggleTaskRunning(task.id)}
-              className={`min-w-[80px] ${task.isRunning ? 'bg-red-100 hover:bg-red-200 text-red-700' : 'bg-green-100 hover:bg-green-200 text-green-700'}`}
-            >
-              {task.isRunning ? (
-                <>
-                  <Pause className="h-4 w-4 mr-1" />
-                  停止
-                </>
-              ) : (
-                <>
-                  <Play className="h-4 w-4 mr-1" />
-                  開始
-                </>
-              )}
-            </Button>
-            <span className="ml-2 min-w-[60px] text-right">{formatTime(calculateTotalTime(task.timeEntries))}</span>
-            <Button variant="ghost" size="icon" onClick={() => togglePin(task.id)}>
-              <Pin className="h-4 w-4" />
-            </Button>
+          <div key={task.id} className="flex-shrink-0 w-64 bg-gray-100 p-2 rounded">
+            <div className="flex justify-between items-center mb-2">
+              <span className={`font-medium ${task.completed ? 'line-through' : ''}`}>{task.title}</span>
+              <Button variant="ghost" size="icon" onClick={() => togglePin(task.id)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex justify-between items-center">
+              <Button
+                variant={task.isRunning ? "destructive" : "default"}
+                size="sm"
+                onClick={() => toggleTaskRunning(task.id)}
+              >
+                {task.isRunning ? <Pause className="h-4 w-4 mr-2" /> : <Play className="h-4 w-4 mr-2" />}
+                {task.isRunning ? '停止' : '開始'}
+              </Button>
+              <span>{formatTime(calculateTotalTime(task))}</span>
+            </div>
           </div>
         ))}
       </div>

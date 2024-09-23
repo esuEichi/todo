@@ -153,7 +153,7 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
   }
 
   return (
-    <div className="w-1/3 bg-white p-4 shadow overflow-y-auto relative">
+    <div className="bg-white p-4 shadow overflow-y-auto relative h-full">
       <Button
         variant="ghost"
         size="icon"
