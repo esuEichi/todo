@@ -9,23 +9,19 @@ import TaskList from '~/components/TaskList'
 import TaskDetails from '~/components/TaskDetails'
 import PinnedTasks from '~/components/PinnedTasks'
 import { sortTasks, calculateTotalTime, formatTime } from '~/utils/taskUtils'
-import { DragDropContext, DropResult } from 'react-beautiful-dnd'
-import { Epic } from '~/types/task'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 import ProductivityManager from '~/components/ProductivityManager'
 
 import type { LoaderFunction } from '@remix-run/node'
-import type { Task } from '~/types/task'
+import type { Task, Epic, TimeEntry } from '~/types/task'
 
 export const loader: LoaderFunction = async () => {
-  // epicのダミーデータを返す
   const epics: Epic[] = [
     { id: '1', title: "生活", description: "" },
     { id: '2', title: "仕事", description: "" },
     { id: '3', title: "健康", description: "" },
   ]
 
-  // ダミーデータを返す
   const tasks: Task[] = [
     { id: '1', title: "買い物に行く", completed: false, important: false, tags: ["日用品", "食料"], epic: epics[0], details: "", startDate: null, endDate: null, pinned: false, timeEntries: [], isRunning: false },
     { id: '2', title: "レポートを書く", completed: false, important: true, tags: ["仕事"], epic: epics[1], details: "", startDate: null, endDate: null, pinned: false, timeEntries: [], isRunning: false },
@@ -37,34 +33,10 @@ export const loader: LoaderFunction = async () => {
 
 export default function Index() {
   const { tasks: initialTasks, epics: initialEpics } = useLoaderData<typeof loader>()
-  const [tasks, setTasks] = useState<Task[]>(() => {
-    if (typeof window !== 'undefined') {
-      const storedTasks = localStorage.getItem('tasks')
-      return storedTasks ? JSON.parse(storedTasks) : initialTasks
-    }
-    return initialTasks
-  })
-  const [epics, setEpics] = useState<Epic[]>(() => {
-    if (typeof window !== 'undefined') {
-      const storedEpics = localStorage.getItem('epics')
-      return storedEpics ? JSON.parse(storedEpics) : initialEpics
-    }
-    return initialEpics
-  })
-  const [selectedTask, setSelectedTask] = useState<Task | null>(() => {
-    if (typeof window !== 'undefined') {
-      const storedSelectedTask = localStorage.getItem('selectedTask')
-      return storedSelectedTask ? JSON.parse(storedSelectedTask) : null
-    }
-    return null
-  })
-  const [allTags, setAllTags] = useState<Set<string>>(() => {
-    if (typeof window !== 'undefined') {
-      const storedTags = localStorage.getItem('allTags')
-      return new Set(storedTags ? JSON.parse(storedTags) : [])
-    }
-    return new Set()
-  })
+  const [tasks, setTasks] = useState<Task[]>(initialTasks)
+  const [epics, setEpics] = useState<Epic[]>(initialEpics)
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  const [allTags, setAllTags] = useState<Set<string>>(new Set(initialTasks.flatMap(task => task.tags)))
   const [newTask, setNewTask] = useState("")
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
   const [selectedTags, setSelectedTags] = useState<string[]>([])
@@ -78,7 +50,12 @@ export default function Index() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('tasks', JSON.stringify(tasks))
+      const tasksToStore = tasks.map(task => ({
+        ...task,
+        startDate: task.startDate ? task.startDate.toISOString() : null,
+        endDate: task.endDate ? task.endDate.toISOString() : null,
+      }))
+      localStorage.setItem('tasks', JSON.stringify(tasksToStore))
     }
   }, [tasks])
 
@@ -174,7 +151,7 @@ export default function Index() {
 
   const updateTaskDate = (id: string, field: 'startDate' | 'endDate', date: Date | null) => {
     setTasks(prevTasks => prevTasks.map(task =>
-      task.id === id ? { ...task, [field]: date ? date.toISOString() : null } : task
+      task.id === id ? { ...task, [field]: date } : task
     ))
   }
 
@@ -263,28 +240,27 @@ export default function Index() {
     ))
   }
 
-  const toggleTaskRunning = (id: string) => {
-    setTasks(prevTasks => prevTasks.map(task => {
-      if (task.id === id) {
-        const now = new Date()
-        if (task.isRunning) {
-          // タスクが実行中の場合、最後の時間エントリーを更新
-          const updatedTimeEntries = task.timeEntries.map((entry, index) => {
-            if (index === task.timeEntries.length - 1 && entry.end === null) {
-              return { ...entry, end: now.toISOString() }
-            }
-            return entry
-          })
-          return { ...task, isRunning: false, timeEntries: updatedTimeEntries }
-        } else {
-          // タスクが停止中の場合、新しい時間エントリーを追加
-          const newTimeEntry = { start: now.toISOString(), end: null }
-          return { ...task, isRunning: true, timeEntries: [...task.timeEntries, newTimeEntry] }
-        }
+// toggleTaskRunning 関数内で
+const toggleTaskRunning = (id: string) => {
+  setTasks(prevTasks => prevTasks.map(task => {
+    if (task.id === id) {
+      const now = new Date().toISOString();
+      if (task.isRunning) {
+        const updatedTimeEntries = task.timeEntries.map((entry, index) => {
+          if (index === task.timeEntries.length - 1 && entry.end === null) {
+            return { ...entry, end: now };
+          }
+          return entry;
+        });
+        return { ...task, isRunning: false, timeEntries: updatedTimeEntries };
+      } else {
+        const newTimeEntry = { start: now, end: null };
+        return { ...task, isRunning: true, timeEntries: [...task.timeEntries, newTimeEntry] };
       }
-      return task
-    }))
-  }
+    }
+    return task;
+  }));
+};
 
   const updateTimeEntry = (taskId: string, entryIndex: number, field: 'start' | 'end', value: string) => {
     setTasks(prevTasks => prevTasks.map(task => {
@@ -303,7 +279,7 @@ export default function Index() {
         const now = new Date().toISOString()
         return {
           ...task,
-          timeEntries: [...task.timeEntries, { start: now, end: now }]
+          timeEntries: [...task.timeEntries, { start: now, end: null }]
         }
       }
       return task
@@ -321,16 +297,6 @@ export default function Index() {
     }))
   }
 
-  const onDragEnd = (result: DropResult) => {
-    if (!result.destination) return
-
-    const newTasks = Array.from(tasks)
-    const [reorderedItem] = newTasks.splice(result.source.index, 1)
-    newTasks.splice(result.destination.index, 0, reorderedItem)
-
-    setTasks(sortTasks(newTasks))
-  }
-
   useEffect(() => {
     const interval = setInterval(() => {
       setTasks(prevTasks => prevTasks.map(task => {
@@ -338,7 +304,7 @@ export default function Index() {
           const lastEntry = task.timeEntries[task.timeEntries.length - 1]
           const now = new Date()
           if (lastEntry) {
-            lastEntry.end = now.toISOString()
+            lastEntry.end = now
           }
           return { ...task, timeEntries: [...task.timeEntries] }
         }
@@ -392,6 +358,19 @@ export default function Index() {
     setShowProductivityManager(prev => !prev)
   }
 
+  const calculateTotalTime = (task: Task): number => {
+    return task.timeEntries.reduce((total, entry) => {
+      if (!entry.start || !entry.end) return total
+      const start = new Date(entry.start)
+      const end = new Date(entry.end)
+      return total + (end.getTime() - start.getTime()) / 1000
+    }, 0)
+  }
+
+  const handleSelectTask = (task: Task) => {
+    setSelectedTask(task);
+  };
+
   return (
     <div className="flex flex-col h-screen bg-gray-100">
       <div className="flex flex-1 overflow-hidden">
@@ -428,53 +407,45 @@ export default function Index() {
               追加
             </Button>
           </div>
-          <DragDropContext onDragEnd={onDragEnd}>
-            <TaskList
-              filteredTasks={filteredTasks}
-              editingTaskId={editingTaskId}
-              setEditingTaskId={setEditingTaskId}
-              toggleComplete={toggleComplete}
-              updateTaskTitle={updateTaskTitle}
-              toggleImportant={toggleImportant}
-              togglePin={togglePin}
-              removeTag={removeTag}
-              addTag={addTag}
-              setSelectedTask={setSelectedTask}
-              deleteTask={deleteTask}
-            />
-          </DragDropContext>
+          <TaskList
+            filteredTasks={filteredTasks}
+            editingTaskId={editingTaskId}
+            setEditingTaskId={setEditingTaskId}
+            toggleComplete={toggleComplete}
+            updateTaskTitle={updateTaskTitle}
+            toggleImportant={toggleImportant}
+            togglePin={togglePin}
+            removeTag={removeTag}
+            addTag={addTag}
+            setSelectedTask={handleSelectTask}
+            deleteTask={deleteTask}
+          />
         </div>
         <div className="flex w-[768px]">
-          {selectedTask ? (
-            <div className="w-1/2">
-              <TaskDetails
-                selectedTask={selectedTask}
-                updateTaskTitle={updateTaskTitle}
-                updateTaskDetails={updateTaskDetails}
-                updateTaskDate={updateTaskDate}
-                removeTag={removeTag}
-                addTag={addTag}
-                updateTimeEntry={updateTimeEntry}
-                addTimeEntry={addTimeEntry}
-                removeTimeEntry={removeTimeEntry}
-                calculateTotalTime={calculateTotalTime}
-                formatTime={formatTime}
-                allTags={Array.from(allTags)}
-                updateAllTags={updateAllTags}
-                onClose={closeTaskDetails}
-                updateTaskEpic={updateTaskEpic}
-                epics={sortedEpics}
-              />
-            </div>
-          ) : (
-            <div className="w-1/2 bg-white shadow-xl p-6">
-              <p className="text-center text-gray-500">タスクを選択してください</p>
-            </div>
-          )}
+          <div className="w-1/2">
+            <TaskDetails
+              selectedTask={selectedTask}
+              updateTaskTitle={updateTaskTitle}
+              updateTaskDetails={updateTaskDetails}
+              updateTaskDate={updateTaskDate}
+              removeTag={removeTag}
+              addTag={addTag}
+              updateTimeEntry={updateTimeEntry}
+              addTimeEntry={addTimeEntry}
+              removeTimeEntry={removeTimeEntry}
+              calculateTotalTime={calculateTotalTime}
+              formatTime={formatTime}
+              allTags={Array.from(allTags)}
+              updateAllTags={updateAllTags}
+              onClose={closeTaskDetails}
+              updateTaskEpic={updateTaskEpic}
+              epics={sortedEpics}
+            />
+          </div>
           <div className="w-1/2">
             <ProductivityManager
               tasks={tasks}
-              onSelectTask={setSelectedTask}
+              onSelectTask={handleSelectTask}
             />
           </div>
         </div>

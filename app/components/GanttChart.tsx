@@ -35,7 +35,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ tasks, startDate, endDate }) =>
             {Array.from({ length: totalDays }).map((_, index) => {
               const currentDate = addDays(startDate, index)
               const isInRange = task.startDate && task.endDate &&
-                isWithinInterval(currentDate, { start: new Date(task.startDate), end: new Date(task.endDate) })
+                isWithinInterval(currentDate, { start: task.startDate, end: task.endDate })
               return (
                 <div key={index} className={`w-8 h-6 ${isInRange ? 'bg-blue-500' : ''}`} />
               )

@@ -14,8 +14,8 @@ export interface Task {
   tags: string[];
   epic: Epic | null;
   details: string;
-  startDate: string | null;
-  endDate: string | null;
+  startDate: Date | null;  // string から Date に変更
+  endDate: Date | null;    // string から Date に変更
   pinned: boolean;
   timeEntries: TimeEntry[];
   isRunning: boolean;

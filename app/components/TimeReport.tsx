@@ -8,10 +8,11 @@ interface TimeReportProps {
 }
 
 const TimeReport: React.FC<TimeReportProps> = ({ tasks, startDate, endDate }) => {
-  const filteredTasks = tasks?.filter(task => {
-    // フィルタリングロジック
-    return true // 仮のロジック
-  }) || []
+  const filteredTasks = tasks.filter(task => {
+    if (!startDate || !endDate) return true
+    return (task.startDate && task.startDate >= startDate && task.startDate <= endDate) ||
+           (task.endDate && task.endDate >= startDate && task.endDate <= endDate)
+  })
 
   return (
     <div>

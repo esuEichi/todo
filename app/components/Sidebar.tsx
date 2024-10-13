@@ -92,17 +92,21 @@ const Sidebar: React.FC<SidebarProps> = ({
         />
       </div>
       <ul>
-        {filteredTags.map(tag => (
-          <li key={tag} className="mb-2">
-            <Button
-              variant={selectedTags.includes(tag) ? "secondary" : "ghost"}
-              onClick={() => toggleTagSelection(tag)}
-              className={`w-full justify-start ${selectedTags.includes(tag) ? 'border-2 border-blue-500' : ''}`}
-            >
-              {tag}
-            </Button>
-          </li>
-        ))}
+        {filteredTags.length > 0 ? (
+          filteredTags.map(tag => (
+            <li key={tag} className="mb-2">
+              <Button
+                variant={selectedTags.includes(tag) ? "secondary" : "ghost"}
+                onClick={() => toggleTagSelection(tag)}
+                className={`w-full justify-start ${selectedTags.includes(tag) ? 'border-2 border-blue-500' : ''}`}
+              >
+                {tag}
+              </Button>
+            </li>
+          ))
+        ) : (
+          <li>タグがありません</li>
+        )}
       </ul>
     </div>
   )

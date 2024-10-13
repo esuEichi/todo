@@ -4,23 +4,23 @@ import { Input } from "~/components/ui/input"
 import { Textarea } from "~/components/ui/textarea"
 import { Calendar } from "~/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
-import { format, parse } from "date-fns"
+import { format } from "date-fns"
 import { ja } from "date-fns/locale"
 import { CalendarIcon, X, Plus, Trash2, Edit2 } from "lucide-react"
 import type { Task, TimeEntry, Epic } from '~/types/task'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 
 interface TaskDetailsProps {
-  selectedTask: Task;
+  selectedTask: Task | null;
   updateTaskTitle: (id: string, title: string) => void;
   updateTaskDetails: (id: string, details: string) => void;
   updateTaskDate: (id: string, field: 'startDate' | 'endDate', date: Date | null) => void;
   removeTag: (taskId: string, tag: string) => void;
   addTag: (taskId: string, tag: string) => void;
-  updateTimeEntry: (taskId: string, entryIndex: number, field: 'start' | 'end', value: string) => void;
+  updateTimeEntry: (taskId: string, entryIndex: number, field: "start" | "end", value: string) => void;
   addTimeEntry: (taskId: string) => void;
   removeTimeEntry: (taskId: string, entryIndex: number) => void;
-  calculateTotalTime: (timeEntries: TimeEntry[]) => number;
+  calculateTotalTime: (task: Task) => number;
   formatTime: (seconds: number, showSeconds?: boolean) => string;
   allTags: string[];
   updateAllTags: (newTag: string) => void;
@@ -48,17 +48,19 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
   epics,
 }) => {
   const [newTag, setNewTag] = useState("")
-  const [localTitle, setLocalTitle] = useState(selectedTask.title)
-  const [localDetails, setLocalDetails] = useState(selectedTask.details)
-  const [localTags, setLocalTags] = useState(selectedTask.tags)
+  const [localTitle, setLocalTitle] = useState("")
+  const [localDetails, setLocalDetails] = useState("")
+  const [localTags, setLocalTags] = useState<string[]>([])
   const [editingTimeEntry, setEditingTimeEntry] = useState<number | null>(null)
   const [editedStart, setEditedStart] = useState("")
   const [editedEnd, setEditedEnd] = useState("")
 
   useEffect(() => {
-    setLocalTitle(selectedTask.title)
-    setLocalDetails(selectedTask.details)
-    setLocalTags(selectedTask.tags)
+    if (selectedTask) {
+      setLocalTitle(selectedTask.title)
+      setLocalDetails(selectedTask.details)
+      setLocalTags(selectedTask.tags)
+    }
   }, [selectedTask])
 
   const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -66,8 +68,10 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
   }, [])
 
   const handleTitleUpdate = useCallback(() => {
-    updateTaskTitle(selectedTask.id, localTitle)
-  }, [selectedTask.id, localTitle, updateTaskTitle])
+    if (selectedTask) {
+      updateTaskTitle(selectedTask.id, localTitle)
+    }
+  }, [selectedTask, localTitle, updateTaskTitle])
 
   const handleTitleKeyDown = useCallback((e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
@@ -80,8 +84,10 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
   }, [])
 
   const handleDetailsUpdate = useCallback(() => {
-    updateTaskDetails(selectedTask.id, localDetails)
-  }, [selectedTask.id, localDetails, updateTaskDetails])
+    if (selectedTask) {
+      updateTaskDetails(selectedTask.id, localDetails)
+    }
+  }, [selectedTask, localDetails, updateTaskDetails])
 
   const handleDetailsKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -94,12 +100,8 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
     return date ? format(date, "yyyy年MM月dd日", { locale: ja }) : ''
   }
 
-  const parseDate = (dateString: string) => {
-    return parse(dateString, "yyyy年MM月dd日", new Date(), { locale: ja })
-  }
-
   const handleAddTag = useCallback(() => {
-    if (newTag && !localTags.includes(newTag)) {
+    if (selectedTask && newTag && !localTags.includes(newTag)) {
       const updatedTags = [...localTags, newTag]
       setLocalTags(updatedTags)
       addTag(selectedTask.id, newTag)
@@ -108,48 +110,66 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
       }
       setNewTag("")
     }
-  }, [newTag, selectedTask.id, localTags, addTag, allTags, updateAllTags])
+  }, [selectedTask, newTag, localTags, addTag, allTags, updateAllTags])
 
   const handleRemoveTag = useCallback((tag: string) => {
-    removeTag(selectedTask.id, tag)
-    setLocalTags(prevTags => prevTags.filter(t => t !== tag))
-  }, [selectedTask.id, removeTag])
+    if (selectedTask) {
+      removeTag(selectedTask.id, tag)
+      setLocalTags(prevTags => prevTags.filter(t => t !== tag))
+    }
+  }, [selectedTask, removeTag])
 
-  const handleDateSelect = (field: 'startDate' | 'endDate') => (date: Date | undefined) => {
-    if (date) {
+  const handleDateSelect = useCallback((field: 'startDate' | 'endDate') => (date: Date | undefined) => {
+    if (selectedTask && date) {
       updateTaskDate(selectedTask.id, field, date)
     }
-  }
+  }, [selectedTask, updateTaskDate])
 
-  const handleEpicChange = (epicId: string) => {
-    updateTaskEpic(selectedTask.id, epicId === 'none' ? null : epicId)
-  }
+  const handleEpicChange = useCallback((epicId: string) => {
+    if (selectedTask) {
+      updateTaskEpic(selectedTask.id, epicId === 'none' ? null : epicId)
+    }
+  }, [selectedTask, updateTaskEpic])
 
-  const handleAddTimeEntry = () => {
-    addTimeEntry(selectedTask.id)
-  }
+  const handleAddTimeEntry = useCallback(() => {
+    if (selectedTask) {
+      addTimeEntry(selectedTask.id)
+    }
+  }, [selectedTask, addTimeEntry])
 
-  const handleRemoveTimeEntry = (index: number) => {
-    removeTimeEntry(selectedTask.id, index)
-  }
+  const handleRemoveTimeEntry = useCallback((index: number) => {
+    if (selectedTask) {
+      removeTimeEntry(selectedTask.id, index)
+    }
+  }, [selectedTask, removeTimeEntry])
 
-  const handleEditTimeEntry = (index: number) => {
-    const entry = selectedTask.timeEntries[index]
-    setEditingTimeEntry(index)
-    setEditedStart(format(new Date(entry.start), "yyyy-MM-dd'T'HH:mm:ss"))
-    setEditedEnd(entry.end ? format(new Date(entry.end), "yyyy-MM-dd'T'HH:mm:ss") : "")
-  }
+  const handleEditTimeEntry = useCallback((index: number) => {
+    if (selectedTask) {
+      const entry = selectedTask.timeEntries[index]
+      setEditingTimeEntry(index)
+      setEditedStart(format(new Date(entry.start), "yyyy-MM-dd'T'HH:mm:ss"))
+      setEditedEnd(entry.end ? format(new Date(entry.end), "yyyy-MM-dd'T'HH:mm:ss") : "")
+    }
+  }, [selectedTask])
 
-  const handleSaveTimeEntry = () => {
-    if (editingTimeEntry !== null) {
+  const handleSaveTimeEntry = useCallback(() => {
+    if (selectedTask && editingTimeEntry !== null) {
       updateTimeEntry(selectedTask.id, editingTimeEntry, 'start', editedStart)
       updateTimeEntry(selectedTask.id, editingTimeEntry, 'end', editedEnd)
       setEditingTimeEntry(null)
     }
-  }
+  }, [selectedTask, editingTimeEntry, editedStart, editedEnd, updateTimeEntry])
 
-  const handleCancelEdit = () => {
+  const handleCancelEdit = useCallback(() => {
     setEditingTimeEntry(null)
+  }, [])
+
+  if (!selectedTask) {
+    return (
+      <div className="bg-white p-4 shadow overflow-y-auto relative h-full">
+        <p className="text-center text-gray-500">タスクを選択してください</p>
+      </div>
+    )
   }
 
   return (
@@ -204,13 +224,13 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
                 className={`w-full justify-start text-left font-normal ${!selectedTask.startDate && "text-muted-foreground"}`}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {selectedTask.startDate ? format(new Date(selectedTask.startDate), "yyyy年MM月dd日", { locale: ja }) : <span>開始日を選択</span>}
+                {selectedTask.startDate ? format(selectedTask.startDate, "yyyy年MM月dd日", { locale: ja }) : <span>開始日を選択</span>}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
               <Calendar
                 mode="single"
-                selected={selectedTask.startDate ? new Date(selectedTask.startDate) : undefined}
+                selected={selectedTask.startDate}
                 onSelect={handleDateSelect('startDate')}
                 initialFocus
                 locale={ja}
@@ -228,13 +248,13 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
                 className={`w-full justify-start text-left font-normal ${!selectedTask.endDate && "text-muted-foreground"}`}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {selectedTask.endDate ? format(new Date(selectedTask.endDate), "yyyy年MM月dd日", { locale: ja }) : <span>終了日を選択</span>}
+                {selectedTask.endDate ? format(selectedTask.endDate, "yyyy年MM月dd日", { locale: ja }) : <span>終了日を選択</span>}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
               <Calendar
                 mode="single"
-                selected={selectedTask.endDate ? new Date(selectedTask.endDate) : undefined}
+                selected={selectedTask.endDate}
                 onSelect={handleDateSelect('endDate')}
                 initialFocus
                 locale={ja}
@@ -288,7 +308,7 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
       </div>
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700">実施時間</label>
-        <p className="mt-1">{formatTime(calculateTotalTime(selectedTask.timeEntries), true)}</p>
+        <p className="mt-1">{formatTime(calculateTotalTime(selectedTask), true)}</p>
       </div>
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700 mb-2">時間エントリー</label>
@@ -332,7 +352,7 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
                   </div>
                   <div className="flex items-center space-x-2 flex-shrink-0">
                     <span className="text-gray-500">
-                      {formatTime(calculateTotalTime([entry]), true)}
+                      {formatTime(calculateTotalTime(selectedTask), true)}
                     </span>
                     <Button
                       variant="ghost"
